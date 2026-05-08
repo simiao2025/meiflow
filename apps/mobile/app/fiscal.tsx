@@ -303,5 +303,11 @@ const styles = StyleSheet.create({
     marginTop: 40,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptyText: {
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 15,
   }
 });
