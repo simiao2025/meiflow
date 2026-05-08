@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../services/supabase';
 
+import { syncData } from '../services/sync';
+
 export default function RootLayout() {
   const { session, profile, isLoading, setSession, refreshProfile } = useAuthStore();
   const segments = useSegments();
@@ -27,6 +29,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (isLoading) return;
+
+    // Disparar sincronização em background se houver sessão
+    if (session) {
+      syncData().catch(err => console.warn('Erro na sync automática:', err));
+    }
 
     const inAuthGroup = segments[0] === 'auth';
     const inOnboarding = segments[0] === 'onboarding';
