@@ -5,6 +5,7 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
+  ScrollView,
   Dimensions 
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
