@@ -194,6 +194,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
+  dasInfo: {
+    flex: 1,
+  },
   dasMonth: {
     fontSize: 18,
     fontWeight: '700',
