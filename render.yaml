@@ -3,7 +3,7 @@ services:
     name: meiflow-ai-orchestrator
     env: docker
     dockerContext: .
-    dockerfilePath: ./services/Dockerfile
+    dockerfilePath: ./services/ai-orchestrator/Dockerfile
     region: ohio
     plan: free
     branch: master
@@ -29,7 +29,7 @@ services:
   - type: web
     name: meiflow-crm-service
     env: docker
-    dockerContext: ./services/crm-service
+    dockerContext: .
     dockerfilePath: ./services/crm-service/Dockerfile
     region: ohio
     plan: free
