@@ -14,6 +14,7 @@ export interface Invoice {
   direction: 'inbound' | 'outbound';
   type: 'nfe' | 'nfse' | 'cte';
   issuer_name: string;
+  receiver_name?: string;
   total_amount: number;
   issue_date: string;
   status: string;

@@ -9,24 +9,55 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../services/supabase';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function AnnualDeclaration() {
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const { user } = useAuthStore();
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() - 1);
   
   // Mock de consolidação automática
   const revenueServices = 42500.00;
   const revenueCommerce = 12400.00;
   const totalRevenue = revenueServices + revenueCommerce;
 
-  const handleTransmit = () => {
+  const [isTransmitting, setIsTransmitting] = useState(false);
+
+  const handleTransmit = async () => {
     Alert.alert(
       'Transmitir DASN-SIMEI',
-      'Deseja enviar agora sua declaração de 2025 para o Gov.br?',
+      'Deseja enviar agora sua declaração para o Gov.br?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sim, Transmitir', onPress: () => Alert.alert('Sucesso', 'Declaração transmitida com sucesso! Recibo disponível em Documentos.') }
+        { text: 'Sim, Transmitir', onPress: transmitDeclaration }
       ]
     );
+  };
+
+  const transmitDeclaration = async () => {
+    setIsTransmitting(true);
+    try {
+      // 1. Inserir no Supabase
+      const { error } = await supabase.from('annual_declarations').insert({
+        user_id: user?.id,
+        year: selectedYear,
+        revenue_services: revenueServices,
+        revenue_commerce: revenueCommerce,
+        has_employee: false,
+        status: 'enviada',
+        receipt_number: `DASN-${selectedYear}-${Date.now()}`
+      });
+
+      if (error) throw error;
+      
+      // 2. Avisar sucesso
+      Alert.alert('Sucesso', 'A Declaração Anual (DASN-SIMEI) foi transmitida (simulação) com sucesso. Um recibo será gerado no módulo fiscal.');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erro', 'Ocorreu um erro ao transmitir a declaração.');
+    } finally {
+      setIsTransmitting(false);
+    }
   };
 
   return (

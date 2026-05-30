@@ -27,11 +27,11 @@ Detalhes completos em [`docs/architecture/README.md`](docs/architecture/README.m
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Mobile | Expo SDK 52+, TypeScript strict, Expo Router |
+| Mobile | Expo SDK 54 (SDK 2026 Ready), TypeScript strict, Expo Router |
 | Estado | Zustand, React Hook Form, Zod |
-| DB Local | WatermelonDB (offline-first) |
+| DB Local | WatermelonDB (Offline-first, SQLite native JSI) |
 | Backend | Supabase (Auth, PostgreSQL + RLS, Storage, Edge Functions, Realtime) |
-| IA | Python 3.12, FastAPI, LangGraph, OpenAI GPT-4o, Claude (fallback) |
+| IA | Python 3.12, FastAPI, LangGraph, Multi-LLM (GPT-4o, Claude 3.5, Gemini 1.5 Pro) |
 | WhatsApp | Evolution Go |
 | Pagamentos | Asaas |
 | Mapas | Google Maps SDK + Google Places API |
@@ -136,6 +136,7 @@ MEIFlow/
 ├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
+├── AI_PROTOCOL.md           # Protocolo de Contexto e Qualidade para IA
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── CHANGELOG.md
@@ -177,6 +178,16 @@ Leia [`CONTRIBUTING.md`](CONTRIBUTING.md) para detalhes completos. Resumo:
 - **Code Review** — PRs obrigatórios, mínimo 1 aprovação
 - **DRY, YAGNI, KISS** — princípios inegociáveis
 - **Offline-first** — toda operação deve funcionar sem internet quando possível
+
+## 🛠️ Estabilidade e Problemas Conhecidos
+
+### Erro `NONE` (Hermes/Babel)
+Um erro crítico de runtime `read-only property 'NONE'` foi identificado em dispositivos físicos.
+- **Causa:** Conflito entre o **React Compiler** e bibliotecas de animação/decoradores.
+- **Solução:** O compilador foi desativado no `babel.config.js` (`reactCompiler: false`) e os plugins de `class-properties` foram padronizados para evitar conflitos de `loose` mode.
+
+### Banco de Dados no Mobile
+Para evitar instabilidades no Hermes, o projeto utiliza `SQLiteAdapter` no mobile com **JSI** ativado, em vez do `LokiJSAdapter` (reservado para ambiente Web).
 
 ## 📄 Licença
 

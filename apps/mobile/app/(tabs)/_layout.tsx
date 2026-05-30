@@ -1,59 +1,146 @@
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { Tabs, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Platform, View, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { useThemeColors, Typography, Palette } from '../../constants/theme';
+import { useThemeStore } from '../../stores/themeStore';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const router = useRouter();
+  const Colors = useThemeColors();
+  const { isDarkMode } = useThemeStore();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: '#3B82F6',
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingTop: Platform.OS === 'android' ? 14 : 14,
+          paddingBottom: 0,
+        },
+        tabBarBackground: () => (
+          <BlurView intensity={30} tint={isDarkMode ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        ),
+        headerStyle: {
+          backgroundColor: Colors.bg,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: Colors.border,
+        },
+        headerTitleStyle: {
+          color: Colors.text,
+          fontSize: 16,
+          fontFamily: Typography.fonts.display,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontFamily: Typography.fonts.medium,
+          marginTop: -4,
+          marginBottom: 4,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: 'Painel',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="fiscal"
+        options={{
+          title: 'Fiscal',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="clients"
+        options={{
+          title: 'Clientes',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="assistant"
+        options={{
+          title: 'IA',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.aiIcon, focused && { backgroundColor: Colors.primary, elevation: 5 }]}>
+              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={28} color={focused ? (isDarkMode ? '#FFF' : '#000') : color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="opportunities"
+        options={{
+          title: 'Oportunidades',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'rocket' : 'rocket-outline'} size={26} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Finanças',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={26} color={color} />
+          ),
         }}
       />
+      {/* Escondidos */}
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Ajustes',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={20} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="schedule" options={{ title: 'Agenda', headerShown: false, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="catalog" options={{ title: 'Catálogo', headerShown: false, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="pos" options={{ tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 32,
+    height: 60,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    elevation: 10,
+    overflow: 'hidden',
+    paddingBottom: 0,
+    paddingTop: 0,
+  },
+  aiIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
+});

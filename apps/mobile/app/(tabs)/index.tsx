@@ -1,259 +1,227 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Dimensions 
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
-
-const { width } = Dimensions.get('window');
+import { useRouter } from 'expo-router';
+import { useThemeColors, Typography, Palette, Colors as StaticColors } from '../../constants/theme';
+import { financialService, fiscalService } from '../../services/api';
+import { BalanceCard } from '../../components/dashboard/BalanceCard';
+import { QuickActions } from '../../components/dashboard/QuickActions';
+import { FiscalCard } from '../../components/dashboard/FiscalCard';
+import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 export default function DashboardScreen() {
-  const { profile } = useAuthStore();
+  const { user, profile } = useAuthStore();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [growth, setGrowth] = useState<string>("0.0");
+  const [nextDas, setNextDas] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const Colors = useThemeColors();
+
+  const loadData = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const [balanceData, dasData] = await Promise.all([
+        financialService.getBalance(user.id),
+        fiscalService.getDasRecords(user.id),
+      ]);
+      setBalance(balanceData.balance);
+      setGrowth(balanceData.growth || "0.0");
+      if (dasData && dasData.length > 0) {
+        setNextDas(dasData[0]);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar dados do Dashboard', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header com Saudação */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Olá, {profile?.full_name?.split(' ')[0] || 'Empreendedor'}</Text>
-          <Text style={styles.companyName}>{profile?.nome_fantasia || profile?.razao_social || 'Sua Empresa MEI'}</Text>
-        </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <Ionicons name="person-circle-outline" size={40} color="#F8FAFC" />
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, { backgroundColor: Colors.bg }]}>
+      <LinearGradient colors={[Colors.bgCard, Colors.bg]} style={StyleSheet.absoluteFill} />
 
-      {/* Card de Saldo Principal */}
-      <LinearGradient colors={['#38BDF8', '#0284C7']} style={styles.balanceCard}>
-        <View style={styles.balanceHeader}>
-          <Text style={styles.balanceLabel}>Saldo Projetado (Mês)</Text>
-          <Ionicons name="eye-outline" size={24} color="#F0F9FF" />
-        </View>
-        <Text style={styles.balanceValue}>R$ 4.580,00</Text>
-        <View style={styles.balanceFooter}>
-          <View style={styles.balanceStat}>
-            <Ionicons name="arrow-up-circle" size={20} color="#BAE6FD" />
-            <Text style={styles.statText}>R$ 6.200,00</Text>
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      >
+        <Animated.View entering={FadeInUp.delay(100).springify().damping(14)} style={styles.header}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={[styles.greetingText, { color: Colors.textSecondary }]}>Olá, {profile?.full_name?.split(' ')[0] || 'MEI'}</Text>
+              <Text style={[styles.companyName, { color: Colors.text }]}>{profile?.nome_fantasia || profile?.razao_social || 'Sua Empresa'}</Text>
+            </View>
+            <TouchableOpacity style={styles.profileBtnRight} onPress={() => router.push('/profile')}>
+              <LinearGradient colors={[Colors.primary, Palette.gold[600]]} style={[styles.profileBadge, { shadowColor: Colors.primary }]}>
+                <Ionicons name="person" size={20} color={Palette.black} />
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          <View style={styles.balanceStat}>
-            <Ionicons name="arrow-down-circle" size={20} color="#FECACA" />
-            <Text style={styles.statText}>R$ 1.620,00</Text>
-          </View>
-        </View>
-      </LinearGradient>
+        </Animated.View>
 
-      {/* Atalhos Rápidos */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Ações Rápidas</Text>
-        <View style={styles.quickActions}>
-          <QuickActionButton icon="add-circle" label="Receita" color="#10B981" />
-          <QuickActionButton icon="remove-circle" label="Despesa" color="#EF4444" />
-          <QuickActionButton icon="document-text" label="NFS-e" color="#38BDF8" />
-          <QuickActionButton icon="qr-code" label="Guia DAS" color="#F59E0B" />
-        </View>
-      </View>
+        <Animated.View entering={FadeInUp.delay(200).springify().damping(14)}>
+          <BalanceCard balance={balance} growth={growth} loading={loading} onRefresh={loadData} />
+        </Animated.View>
 
-      {/* Status Fiscal */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Obrigações Fiscais</Text>
-        <TouchableOpacity style={styles.fiscalCard}>
-          <View style={[styles.fiscalIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-            <Ionicons name="calendar" size={24} color="#F59E0B" />
-          </View>
-          <View style={styles.fiscalInfo}>
-            <Text style={styles.fiscalTitle}>DAS de Maio/2026</Text>
-            <Text style={styles.fiscalStatus}>Vence em 20 de Maio</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-        </TouchableOpacity>
-      </View>
+        <Animated.View entering={FadeInUp.delay(300).springify().damping(14)}>
+          <QuickActions
+            actions={[
+              { icon: 'add', label: 'Receita', color: Colors.primary },
+              { icon: 'remove', label: 'Despesa', color: '#FCA5A5' },
+              { icon: 'document-text-outline', label: 'NFS-e', color: '#7DD3FC', onPress: () => router.push('/fiscal') },
+              { icon: 'qr-code-outline', label: 'Guia DAS', color: '#FCD34D', onPress: () => router.push('/fiscal') },
+            ]}
+          />
+        </Animated.View>
 
-      {/* Espaço para o Assistente IA (Teaser) */}
-      <TouchableOpacity style={styles.aiTeaser}>
-        <LinearGradient 
-          colors={['rgba(56, 189, 248, 0.15)', 'rgba(139, 92, 246, 0.15)']} 
-          start={{x: 0, y: 0}} 
-          end={{x: 1, y: 1}}
-          style={styles.aiTeaserGradient}
-        >
-          <Ionicons name="sparkles" size={24} color="#38BDF8" />
-          <Text style={styles.aiTeaserText}>O Assistente IA tem 2 novas sugestões para você economizar impostos.</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </ScrollView>
+        <Animated.View entering={FadeInUp.delay(400).springify().damping(14)} style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Gestão Inteligente</Text>
+            <TouchableOpacity style={[styles.alertBadge, { borderColor: Colors.border }]}>
+              <View style={[styles.liveDot, { backgroundColor: Colors.primary }]} />
+              <Text style={[styles.liveText, { color: Colors.text }]}>Notícias Legais</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.smartRow}>
+            <SmartButton
+              icon="cash-outline"
+              title="Cobrar Cliente"
+              subtitle="PIX ou Cartão"
+              color={Colors.primary}
+              onPress={() => router.push('/billing/charge')}
+            />
+            <SmartButton
+              icon="calendar-outline"
+              title="Agenda"
+              subtitle="Compromissos"
+              color="#818CF8"
+              onPress={() => router.push('/schedule')}
+            />
+          </View>
+          <View style={[styles.smartRow, { marginTop: 12 }]}>
+            <SmartButton
+              icon="pricetags-outline"
+              title="Meu Catálogo"
+              subtitle="Serviços e Produtos"
+              color={Palette.warning}
+              onPress={() => router.push('/catalog')}
+            />
+            <SmartButton
+              icon="cart-outline"
+              title="Frente de Caixa"
+              subtitle="PDV e Vendas"
+              color="#10B981"
+              onPress={() => router.push('/pos')}
+            />
+          </View>
+          <View style={[styles.smartRow, { marginTop: 12 }]}>
+            <SmartButton
+              icon="settings-outline"
+              title="Ajustes"
+              subtitle="Conta e App"
+              color={Colors.textMuted}
+              onPress={() => router.push('/settings')}
+            />
+            <View style={{ flex: 1 }} />
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(500).springify().damping(14)}>
+          <FiscalCard nextDas={nextDas} onPress={() => router.push('/fiscal')} />
+        </Animated.View>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
-function QuickActionButton({ icon, label, color }: { icon: any, label: string, color: string }) {
+function SmartButton({ icon, title, subtitle, color, onPress }: any) {
+  const scale = useSharedValue(1);
+  const Colors = useThemeColors();
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return { transform: [{ scale: scale.value }] };
+  });
+
   return (
-    <TouchableOpacity style={styles.actionButton}>
-      <View style={[styles.actionIcon, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon} size={28} color={color} />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-    </TouchableOpacity>
+    <Animated.View style={[styles.smartBtnWrapper, animatedStyle]}>
+      <TouchableOpacity 
+        style={[styles.smartBtn, { borderColor: Colors.borderStrong, backgroundColor: Colors.bgCard }]} 
+        onPress={onPress}
+        activeOpacity={1}
+        onPressIn={() => { scale.value = withSpring(0.95, { damping: 12 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
+      >
+        <View style={[styles.smartIcon, { backgroundColor: color + '15' }]}>
+          <Ionicons name={icon as any} size={20} color={color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.smartTitle, { color: Colors.text }]} numberOfLines={2}>{title}</Text>
+          <Text style={[styles.smartSubtitle, { color: Colors.textMuted }]}>{subtitle}</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
+  container: { flex: 1 },
+  header: { 
+    paddingHorizontal: 24, 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    marginBottom: 10 
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  headerRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-end' 
+  },
+  greetingText: { fontSize: 16, fontFamily: Typography.fonts.medium },
+  companyName: { fontSize: 32, fontFamily: Typography.fonts.display, marginTop: 4, letterSpacing: -1 },
+  profileBtnRight: { marginBottom: 4 },
+  profileBadge: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 14, 
+    justifyContent: 'center', 
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    marginBottom: 32,
-  },
-  greeting: {
-    fontSize: 16,
-    color: '#94A3B8',
-  },
-  companyName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    marginTop: 4,
-  },
-  profileButton: {
-    padding: 4,
-  },
-  balanceCard: {
-    marginHorizontal: 24,
-    padding: 24,
-    borderRadius: 32,
-    marginBottom: 40,
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: StaticColors.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 8,
+    elevation: 5
   },
-  balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+  section: { paddingHorizontal: 24, marginTop: 25 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  sectionTitle: { fontSize: 18, fontFamily: Typography.fonts.display, letterSpacing: -0.5 },
+  alertBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'transparent', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 0.5 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  liveText: { fontSize: 10, fontFamily: Typography.fonts.medium, letterSpacing: 0.2 },
+  smartRow: { flexDirection: 'row', gap: 12 },
+  smartBtnWrapper: { flex: 1 },
+  smartBtn: { 
+    borderRadius: 20, 
+    padding: 14, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    borderWidth: 0.5, 
   },
-  balanceLabel: {
-    color: '#F0F9FF',
-    fontSize: 14,
-    fontWeight: '600',
-    opacity: 0.9,
-  },
-  balanceValue: {
-    color: '#FFFFFF',
-    fontSize: 36,
-    fontWeight: '800',
-    marginBottom: 24,
-  },
-  balanceFooter: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(248, 250, 252, 0.2)',
-    paddingTop: 16,
-  },
-  balanceStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 24,
-  },
-  statText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: 6,
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 16,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    alignItems: 'center',
-    width: (width - 48) / 4 - 8,
-  },
-  actionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  actionLabel: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  fiscalCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  fiscalIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  fiscalInfo: {
-    flex: 1,
-  },
-  fiscalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F1F5F9',
-  },
-  fiscalStatus: {
-    fontSize: 14,
-    color: '#F59E0B',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  aiTeaser: {
-    marginHorizontal: 24,
-    marginBottom: 100,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  aiTeaserGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  aiTeaserText: {
-    flex: 1,
-    color: '#BAE6FD',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 12,
-    lineHeight: 20,
-  },
+  smartIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  smartTitle: { fontSize: 13, fontFamily: Typography.fonts.display },
+  smartSubtitle: { fontSize: 10, fontFamily: Typography.fonts.medium },
 });

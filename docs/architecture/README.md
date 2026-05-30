@@ -57,6 +57,7 @@ O MEIFlow é composto por três camadas principais que se comunicam de forma seg
 | [ADR-001](ADR-001-stack-selection.md) | Stack técnica: Expo + Supabase + Python | Aceita |
 | [ADR-002](ADR-002-offline-first.md) | Estratégia offline com WatermelonDB | Aceita |
 | [ADR-003](ADR-003-ai-agents.md) | Agentes IA com LangGraph em serviço separado | Aceita |
+| [ADR-004](ADR-004-babel-hermes-stability.md) | Estabilidade de Runtime (Babel, Hermes, Compiler) | Aceita |
 
 ## Schemas do Banco
 
