@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY services/crm-service/pyproject.toml .
 
-RUN pip install --no-cache-dir httpx fastapi uvicorn supabase
+RUN pip install --no-cache-dir .
 
 COPY services/crm-service/app ./app
 COPY services/shared /shared
