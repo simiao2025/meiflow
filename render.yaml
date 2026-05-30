@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: meiflow-ai-orchestrator
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/Dockerfile
+    region: ohio
+    plan: free
+    branch: master
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: EVOLUTION_API_URL
+        sync: false
+      - key: EVOLUTION_API_KEY
+        sync: false
+      - key: INTERNAL_API_KEY
+        value: meiflow_secret_2026_internal
+      - key: CRM_SERVICE_URL
+        fromService:
+          type: web
+          name: meiflow-crm-service
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: meiflow-crm-service
+    env: docker
+    dockerContext: ./services/crm-service
+    dockerfilePath: ./services/crm-service/Dockerfile
+    region: ohio
+    plan: free
+    branch: master
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: EVOLUTION_API_URL
+        sync: false
+      - key: EVOLUTION_API_KEY
+        sync: false
+      - key: INTERNAL_API_KEY
+        value: meiflow_secret_2026_internal
