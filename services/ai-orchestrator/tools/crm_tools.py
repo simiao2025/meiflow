@@ -125,9 +125,87 @@ async def agendar_servico(user_id: str, client_id: str, data_hora: str, descrica
     except Exception as e:
         return f"Erro ao agendar no CRM Service: {str(e)}"
 
+class TelefoneInput(BaseModel):
+    telefone: str = Field(description="Telefone do cliente (ex: 5511999999999)")
+
+class ConsultarCatalogoInput(BaseModel):
+    user_id: str = Field(description="UUID do MEI dono")
+    termo: str = Field(default="", description="Termo de busca opcional")
+
+class GerarCobrancaInput(BaseModel):
+    user_id: str = Field(description="UUID do MEI")
+    client_id: str = Field(description="UUID do cliente")
+    amount: float = Field(description="Valor da cobrança")
+    method: str = Field(description="'pix' ou 'credit_card'")
+    description: str = Field(description="Descrição da cobrança")
+
+@tool("buscar_cliente_por_telefone", args_schema=TelefoneInput)
+async def buscar_cliente_por_telefone(telefone: str) -> str:
+    """Busca um cliente pelo número de telefone."""
+    try:
+        # Busca direta no banco de dados para evitar dependência excessiva do microserviço
+        clients = await _supabase_get("clients", {"whatsapp_number": f"eq.{telefone}"})
+        if not clients:
+            return "Cliente não encontrado."
+        c = clients[0]
+        return f"Cliente Encontrado! Nome: {c.get('name')}, ID: {c.get('id')}"
+    except Exception as e:
+        return f"Erro ao buscar cliente: {str(e)}"
+
+@tool("consultar_catalogo", args_schema=ConsultarCatalogoInput)
+async def consultar_catalogo(user_id: str, termo: str = "") -> str:
+    """Consulta os produtos e serviços cadastrados no catálogo do MEI com seus respectivos preços."""
+    try:
+        items = await _supabase_get("catalog", {"user_id": f"eq.{user_id}"})
+        if not items:
+            return "Catálogo vazio."
+        
+        lines = ["Itens no catálogo:"]
+        for i in items:
+            if termo.lower() in i.get('name', '').lower() or termo.lower() in i.get('description', '').lower() or not termo:
+                lines.append(f"- {i['name']} | R$ {i['price']:.2f} | Tipo: {i['type']} | [IMG:{i.get('image_url') or ''}]")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Erro ao consultar catálogo: {str(e)}"
+
+@tool("gerar_cobranca", args_schema=GerarCobrancaInput)
+async def gerar_cobranca(user_id: str, client_id: str, amount: float, method: str, description: str) -> str:
+    """Gera uma cobrança e retorna o link de pagamento ou código PIX."""
+    try:
+        # Cria a cobrança no banco (aqui em dev seria gerada via gateway, mas simularemos)
+        payload = {
+            "user_id": user_id,
+            "client_id": client_id,
+            "amount": amount,
+            "payment_method": method,
+            "description": description,
+            "status": "pending"
+        }
+        resp = await _supabase_post("charges", payload)
+        charge_id = resp[0]['id'] if resp else 'N/A'
+        
+        # Link simulado para o MVP
+        link = f"https://meiflow.app/pay/{charge_id}"
+        return f"Cobrança de R$ {amount:.2f} gerada com sucesso! Link para pagamento: {link}"
+    except Exception as e:
+        return f"Erro ao gerar cobrança: {str(e)}"
+
+@tool("solicitar_atendimento_humano", args_schema=TelefoneInput)
+async def solicitar_atendimento_humano(telefone: str) -> str:
+    """Desativa a IA para o cliente e transfere o atendimento para um humano."""
+    try:
+        await _supabase_patch("clients", "whatsapp_number", telefone, {"ai_agent_enabled": False})
+        return "Atendimento humano solicitado. O bot foi pausado para este cliente."
+    except Exception as e:
+        return f"Erro ao solicitar atendimento humano: {str(e)}"
+
 CUSTOMER_TOOLS = [
     listar_clientes,
     cadastrar_cliente,
     consultar_agendamentos,
-    agendar_servico
+    agendar_servico,
+    buscar_cliente_por_telefone,
+    consultar_catalogo,
+    gerar_cobranca,
+    solicitar_atendimento_humano
 ]

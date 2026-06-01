@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 import { aiFinanceService } from '../../services/api';
+import { supabase } from '../../services/supabase';
+import { useAuthStore } from '../../stores/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -11,12 +13,34 @@ export default function OpenFinanceSync() {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
   const router = useRouter();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [connectedBanks, setConnectedBanks] = useState(0);
+
+  useEffect(() => {
+    checkBanks();
+  }, [user]);
+
+  const checkBanks = async () => {
+    if (!user) return;
+    const { count } = await supabase
+      .from('bank_accounts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    
+    setConnectedBanks(count || 0);
+  };
 
   const handleConnect = async () => {
+    if (connectedBanks === 0) {
+      alert("Nenhum banco conectado! Por favor, vá em Ajustes > Contas Bancárias e adicione um banco primeiro.");
+      return;
+    }
+    
     setLoading(true);
     try {
+      // In a real scenario, this would loop through connectedBanks and fetch statements
       await aiFinanceService.syncBankStatements();
       setSuccess(true);
       setTimeout(() => {
@@ -42,13 +66,13 @@ export default function OpenFinanceSync() {
         <View style={styles.iconWrapper}>
           <Ionicons name="business" size={48} color={Colors.primary} />
           <View style={styles.badge}>
-            <Ionicons name="shield-checkmark" size={14} color="#FFF" />
+            <Text style={{ color: Palette.black, fontWeight: 'bold' }}>{connectedBanks}</Text>
           </View>
         </View>
         
-        <Text style={styles.title}>Conecte seu Banco</Text>
+        <Text style={styles.title}>Sincronizar Bancos</Text>
         <Text style={styles.subtitle}>
-          Deixe a nossa IA ler seu extrato bancário de forma segura e cruzar as informações com suas notas fiscais e impostos.
+          Você tem {connectedBanks} {connectedBanks === 1 ? 'conta conectada' : 'contas conectadas'}. A IA lerá seus extratos e fará o cruzamento com as notas fiscais.
         </Text>
 
         <View style={styles.benefits}>
@@ -73,7 +97,13 @@ export default function OpenFinanceSync() {
           </View>
         ) : (
           <TouchableOpacity style={styles.connectBtn} onPress={handleConnect} disabled={loading}>
-            {loading ? <ActivityIndicator color={Palette.black} /> : <Text style={styles.connectBtnText}>Continuar e Conectar</Text>}
+            {loading ? <ActivityIndicator color={Palette.black} /> : <Text style={styles.connectBtnText}>Sincronizar Agora</Text>}
+          </TouchableOpacity>
+        )}
+        
+        {connectedBanks === 0 && (
+          <TouchableOpacity onPress={() => router.push('/settings/bank-accounts')} style={{ marginTop: 20 }}>
+             <Text style={{ color: Colors.primary, textDecorationLine: 'underline' }}>Gerenciar Contas Bancárias</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -134,7 +164,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.primary,
     width: 28,
     height: 28,
     borderRadius: 14,

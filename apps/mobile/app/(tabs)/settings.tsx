@@ -162,19 +162,7 @@ export default function SettingsScreen() {
   return (
     <>
       <ScrollView style={[styles.container, { backgroundColor: Colors.bg }]} contentContainerStyle={{ paddingBottom: 100 }}>
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: Colors.textMuted }]}>Aparência</Text>
-        <View style={[styles.card, { backgroundColor: Colors.bgCard, borderColor: Colors.border }]}>
-          <SettingsItem 
-            icon="moon-outline" 
-            title="Modo Escuro" 
-            subtitle="Economize bateria e descanse a vista" 
-            toggle={true}
-            value={isDarkMode}
-            onPress={toggleDarkMode}
-          />
-        </View>
-      </View>
+
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: Colors.textMuted }]}>Pagamentos & Cobranças</Text>

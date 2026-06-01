@@ -91,10 +91,9 @@ export const Colors = DarkColors;
 
 import { useThemeStore } from '../stores/themeStore';
 
-export function useThemeColors() {
-  const { isDarkMode } = useThemeStore();
-  return isDarkMode ? DarkColors : LightColors;
-}
+export const useThemeColors = () => {
+  return DarkColors;
+};
 
 export const Typography = {
   fonts: {

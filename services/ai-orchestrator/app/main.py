@@ -415,6 +415,26 @@ async def whatsapp_webhook(request: Request, data: dict):
                 audio_bytes = base64.b64decode(media_response['base64'])
                 text = await AudioService.transcribe_audio(audio_bytes, f"{message_id}.ogg")
                 logger.info(f"Áudio transcrito ({len(text)} chars)")
+        elif 'documentMessage' in message:
+            doc_msg = message['documentMessage']
+            if doc_msg.get('mimetype') == 'application/pdf':
+                logger.info("Recebido PDF. Fazendo download via Evolution API...")
+                media_response = await WhatsAppService.download_media(instance_name, message_id)
+                if media_response and 'base64' in media_response:
+                    try:
+                        import pypdf
+                        import io
+                        pdf_bytes = base64.b64decode(media_response['base64'])
+                        pdf_file = io.BytesIO(pdf_bytes)
+                        reader = pypdf.PdfReader(pdf_file)
+                        extracted_text = ""
+                        for page in reader.pages:
+                            extracted_text += page.extract_text() + "\n"
+                        text = f"[O cliente enviou um documento PDF com o seguinte conteúdo:\n{extracted_text[:4000]}]"
+                        logger.info("PDF lido com sucesso.")
+                    except Exception as e:
+                        logger.error(f"Erro ao ler PDF: {e}")
+                        text = "[O cliente enviou um PDF, mas não foi possível extrair o texto.]"
 
         if text:
             # 3. CHAMAR A IA (Agente do Cliente)

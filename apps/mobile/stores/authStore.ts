@@ -79,6 +79,7 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
   
   if (session && event !== 'PASSWORD_RECOVERY') {
+    useAuthStore.setState({ isProfileLoaded: false });
     useAuthStore.getState().refreshProfile();
   }
   

@@ -62,13 +62,6 @@ export default function LoginScreen() {
       if (profileError) {
         console.warn('Erro ao buscar perfil no login:', profileError);
       }
-        
-      if (!profile?.cnpj) {
-        // Redireciona para o Onboarding obrigatório
-        router.replace('/onboarding');
-      } else {
-        router.replace('/(tabs)');
-      }
     }
   };
 

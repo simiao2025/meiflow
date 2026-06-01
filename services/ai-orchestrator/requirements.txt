@@ -17,3 +17,4 @@ supabase==2.4.3
 redis
 elevenlabs<1.3.0
 apscheduler
+pypdf
