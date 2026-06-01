@@ -16,7 +16,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarShowLabel: false,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: '#3B82F6',
+        tabBarInactiveTintColor: Colors.textSecondary,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: {
           justifyContent: 'center',

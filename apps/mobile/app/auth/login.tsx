@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ImageBackground,
+  Image,
   Dimensions
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
@@ -17,11 +17,13 @@ import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { Colors } from '../../constants/theme';
+import { useThemeColors } from '../../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,16 +74,9 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Imagem de Fundo (Bento Grid) */}
-      <ImageBackground 
-        source={require('../../assets/images/login_bg.png')} 
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
-
       {/* Camada de Gradiente Premium */}
       <LinearGradient 
-        colors={['rgba(15, 23, 42, 0.6)', 'rgba(15, 23, 42, 0.95)']} 
+        colors={['#050505', '#0A0A0A']} 
         style={StyleSheet.absoluteFillObject}
       />
 
@@ -94,7 +89,7 @@ export default function LoginScreen() {
           <View style={styles.glassCard}>
             <View style={styles.header}>
               <View style={styles.logoBadge}>
-                <Ionicons name="rocket" size={32} color="#38BDF8" />
+                <Image source={require('../../assets/images/icon.png')} style={{width: 48, height: 48, borderRadius: 12}} />
               </View>
               <Text style={styles.title}>MEIFlow</Text>
               <Text style={styles.subtitle}>Gestão inteligente para o seu negócio</Text>
@@ -158,10 +153,10 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: Colors.bg,
   },
   content: {
     flex: 1,
@@ -198,12 +193,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: Colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: Colors.borderStrong,
   },
   title: {
     fontSize: 32,
@@ -251,12 +246,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#38BDF8',
+    color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: Colors.primary,
     height: 56,
     borderRadius: 16,
     justifyContent: 'center',
@@ -265,7 +260,7 @@ const styles = StyleSheet.create({
       web: {
         transition: 'all 0.2s ease',
         ':hover': {
-          backgroundColor: '#0EA5E9',
+          backgroundColor: Colors.primaryLight,
         }
       }
     })
@@ -285,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footerLink: {
-    color: '#38BDF8',
+    color: Colors.primary,
     fontSize: 14,
     fontWeight: '700',
   },

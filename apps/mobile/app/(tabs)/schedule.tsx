@@ -8,11 +8,13 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Colors, Typography, Spacing, Palette } from '../../constants/theme';
+import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
 import { scheduleLocalPush, requestNotificationPermissions } from '../../utils/notifications';
 import { useRouter } from 'expo-router';
 
 export default function ScheduleScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const router = useRouter();
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -118,6 +120,8 @@ export default function ScheduleScreen() {
 }
 
 function StatItem({ label, val, color }: any) {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   return (
     <View style={[styles.bezelOuter, { flex: 1, borderRadius: 16 }]}>
       <View style={[styles.bezelInner, { borderRadius: 14.5, padding: 12, alignItems: 'center' }]}>
@@ -129,6 +133,8 @@ function StatItem({ label, val, color }: any) {
 }
 
 function AppointmentCard({ item, index }: any) {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const time = new Date(item.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   
   return (
@@ -152,7 +158,7 @@ function AppointmentCard({ item, index }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: { padding: 24, paddingTop: 60 },
   eyebrow: { color: Colors.primary, fontFamily: Typography.fonts.medium, fontSize: 10, letterSpacing: 2, marginBottom: 8 },

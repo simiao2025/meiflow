@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Colors, Palette, Typography } from '../../constants/theme';
+import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
 import { generateAndSharePDF, getExportHtmlTemplate } from '../../utils/pdfGenerator';
 
 export default function ExportScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const router = useRouter();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -22,6 +24,8 @@ export default function ExportScreen() {
   });
 
   const toggleOption = (key: keyof typeof options) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     setOptions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -129,7 +133,7 @@ export default function ExportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: { padding: 24, paddingTop: 60, flexDirection: 'row', alignItems: 'center', gap: 16 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },

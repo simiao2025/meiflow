@@ -86,7 +86,7 @@ export default function RecoverPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <ImageBackground source={require('../../assets/images/login_bg.png')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      <ImageBackground source={require('../../assets/images/login_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <LinearGradient colors={['rgba(15, 23, 42, 0.6)', 'rgba(15, 23, 42, 0.95)']} style={StyleSheet.absoluteFillObject} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>

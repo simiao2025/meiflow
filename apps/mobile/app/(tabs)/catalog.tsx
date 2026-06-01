@@ -8,10 +8,12 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Colors, Typography, Palette } from '../../constants/theme';
+import { Typography, Palette, useThemeColors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 
 export default function CatalogScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
@@ -284,6 +286,8 @@ export default function CatalogScreen() {
 }
 
 function CatalogItemCard({ item, index }: any) {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const itemAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(itemAnim, { toValue: 1, duration: 600, delay: index * 100, useNativeDriver: true }).start();
@@ -322,7 +326,7 @@ function CatalogItemCard({ item, index }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row',

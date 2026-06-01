@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Palette, Typography } from '../../constants/theme';
+import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { aiFinanceService } from '../../services/api';
 import { supabase } from '../../services/supabase';
 
 export default function ReconciliationScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const router = useRouter();
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,8 @@ export default function ReconciliationScreen() {
   };
 
   const handleAction = (approved: boolean) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     // Optimistic UI updates
     const current = currentIndex;
     processAction(approved, current);
@@ -169,7 +173,7 @@ export default function ReconciliationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Palette.black },
   header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center' },
   headerTitle: { color: Colors.text, fontSize: 18, fontFamily: Typography.fonts.display },

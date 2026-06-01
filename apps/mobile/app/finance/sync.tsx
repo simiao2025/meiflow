@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Palette, Typography } from '../../constants/theme';
+import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 import { aiFinanceService } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function OpenFinanceSync() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -79,7 +81,7 @@ export default function OpenFinanceSync() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Palette.black,

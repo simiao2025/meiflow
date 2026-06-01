@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Palette, Typography } from '../../constants/theme';
+import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { creditService, alertsService, procurementService } from '../../services/api';
 
 const { width } = Dimensions.get('window');
@@ -20,6 +20,8 @@ const { width } = Dimensions.get('window');
 type Category = 'credit' | 'procurement' | 'legal';
 
 export default function OpportunitiesScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const [activeCategory, setActiveCategory] = useState<Category>('credit');
 
   const categories = [
@@ -64,6 +66,8 @@ export default function OpportunitiesScreen() {
 // CRÉDITO
 // ─────────────────────────────────────────────────────
 function CreditSection() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('todos');
@@ -161,6 +165,8 @@ function CreditSection() {
 // LICITAÇÕES (PNCP)
 // ─────────────────────────────────────────────────────
 function ProcurementSection() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const [tenders, setTenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -188,12 +194,16 @@ function ProcurementSection() {
   };
 
   const formatDate = (dateStr: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     try {
       return new Date(dateStr).toLocaleDateString('pt-BR');
     } catch { return dateStr; }
   };
 
   const formatCurrency = (value: number) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     try {
       return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     } catch { return `R$ ${value}`; }
@@ -231,8 +241,8 @@ function ProcurementSection() {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.opportunityCard} activeOpacity={0.8}>
               <View style={styles.cardHeader}>
-                <View style={[styles.bankLogo, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
-                  <Ionicons name="document-text-outline" size={24} color="#3B82F6" />
+                <View style={[styles.bankLogo, { backgroundColor: Colors.primaryMuted }]}>
+                  <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle} numberOfLines={2}>
@@ -281,6 +291,8 @@ function ProcurementSection() {
 // RADAR DO MEI
 // ─────────────────────────────────────────────────────
 function LegalSection() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('todos');
@@ -310,10 +322,12 @@ function LegalSection() {
   };
 
   const getImpactColor = (impact: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     switch (impact) {
       case 'Crítica': return '#EF4444';
       case 'Alta': return '#F59E0B';
-      case 'Média': return '#3B82F6';
+      case 'Média': return Colors.primaryLight;
       default: return '#6B7280';
     }
   };
@@ -375,7 +389,7 @@ function LegalSection() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Palette.black },
   header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 12 },
   headerTitle: { fontSize: 24, fontFamily: Typography.fonts.display, color: Colors.text },
@@ -409,8 +423,8 @@ const styles = StyleSheet.create({
   applyBtn: { backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   applyBtnText: { color: '#FFF', fontSize: 13, fontFamily: Typography.fonts.display },
 
-  modalityBadge: { backgroundColor: 'rgba(59,130,246,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, maxWidth: 120 },
-  modalityText: { color: '#3B82F6', fontSize: 10, fontFamily: Typography.fonts.display },
+  modalityBadge: { backgroundColor: Colors.primaryMuted, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, maxWidth: 120 },
+  modalityText: { color: Colors.primary, fontSize: 10, fontFamily: Typography.fonts.display },
 
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 12, gap: 16 },
   pageBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Palette.navyDeep, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Palette.border },

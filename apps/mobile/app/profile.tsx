@@ -1,3 +1,4 @@
+import { Colors } from '../constants/theme';
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -86,14 +87,14 @@ export default function ProfileScreen() {
 
   const SectionTitle = ({ icon, title }: { icon: any, title: string }) => (
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={20} color="#38BDF8" style={{ marginRight: 8 }} />
+      <Ionicons name={icon} size={20} color={Colors.primary} style={{ marginRight: 8 }} />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
 
   return (
-    <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.container}>
-      <Stack.Screen options={{ title: 'Meu Perfil', headerShown: true, headerTintColor: '#FFF', headerStyle: { backgroundColor: '#0F172A' } }} />
+    <LinearGradient colors={[Colors.bg, '#1E293B']} style={styles.container}>
+      <Stack.Screen options={{ title: 'Meu Perfil', headerShown: true, headerTintColor: '#FFF', headerStyle: { backgroundColor: Colors.bg } }} />
       
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -102,7 +103,7 @@ export default function ProfileScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarLarge}>
-              <Ionicons name="person" size={40} color="#38BDF8" />
+              <Ionicons name="person" size={40} color={Colors.primary} />
             </View>
             <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
@@ -135,7 +136,7 @@ export default function ProfileScreen() {
               style={styles.settingsButton}
               onPress={() => router.push('/settings')}
             >
-              <Ionicons name="options-outline" size={20} color="#38BDF8" style={{ marginRight: 12 }} />
+              <Ionicons name="options-outline" size={20} color={Colors.primary} style={{ marginRight: 12 }} />
               <Text style={styles.settingsButtonText}>Ajustes de Tema e Preferências</Text>
               <Ionicons name="chevron-forward" size={20} color="#475569" />
             </TouchableOpacity>
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: Colors.borderStrong,
     marginBottom: 12,
   },
   profileEmail: {
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#38BDF8',
+    color: Colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -280,13 +281,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: Colors.primary,
     height: 56,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
-    shadowColor: '#38BDF8',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

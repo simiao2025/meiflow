@@ -5,10 +5,12 @@ import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Colors, Palette, Typography } from '../constants/theme';
+import { Palette, Typography, useThemeColors } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function MapScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const router = useRouter();
   const { clientId, clientName, clientAddress, lat, lng } = useLocalSearchParams();
   
@@ -42,6 +44,8 @@ export default function MapScreen() {
   }, []);
 
   const openNavigation = () => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     if (!targetCoords) return;
     
     const url = Platform.select({
@@ -152,7 +156,7 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Palette.black,

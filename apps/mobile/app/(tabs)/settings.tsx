@@ -20,16 +20,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
-import { useThemeColors, Palette, Typography, Colors as StaticColors } from '../../constants/theme';
+import { useThemeColors, Palette, Typography } from '../../constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuthStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const Colors = useThemeColors();
-  const [isAsaasModalVisible, setAsaasModalVisible] = React.useState(false);
-  const [asaasKey, setAsaasKey] = React.useState(profile?.asaas_api_key || '');
-  const [isSaving, setIsSaving] = useState(false);
 
   // WhatsApp Pairing State
   const [isPairingModalVisible, setPairingModalVisible] = useState(false);
@@ -47,25 +44,6 @@ export default function SettingsScreen() {
     };
   }, []);
 
-  const handleSaveAsaas = async () => {
-    if (!user) return;
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ asaas_api_key: asaasKey })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      await refreshProfile();
-      setAsaasModalVisible(false);
-      Alert.alert('Sucesso', 'Configurações do Asaas salvas com sucesso!');
-    } catch (e: any) {
-      Alert.alert('Erro', e.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
@@ -161,7 +139,7 @@ export default function SettingsScreen() {
       onPress={onPress}
       disabled={toggle}
     >
-      <View style={styles.itemIconContainer}>
+      <View style={[styles.itemIconContainer, { backgroundColor: Colors.primaryMuted }]}>
         <Ionicons name={icon} size={22} color={Colors.primary} />
       </View>
       <View style={styles.itemContent}>
@@ -206,13 +184,6 @@ export default function SettingsScreen() {
             title="Cobrar Cliente" 
             subtitle="Gerar PIX, link de cartão ou registrar dinheiro" 
             onPress={() => router.push('/billing/charge')}
-          />
-          <View style={styles.divider} />
-          <SettingsItem 
-            icon="card-outline" 
-            title="Configurar Gateway (Asaas)" 
-            subtitle={profile?.asaas_api_key ? "✅ Gateway Configurado" : "⚠️ Chave de API pendente"} 
-            onPress={() => setAsaasModalVisible(true)}
           />
         </View>
       </View>
@@ -276,7 +247,7 @@ export default function SettingsScreen() {
             icon="wallet-outline" 
             title="Contas Bancárias" 
             subtitle="Gerencie seus bancos conectados" 
-            onPress={() => Alert.alert('Contas Bancárias', 'Módulo de Open Finance em fase de homologação.')}
+            onPress={() => router.push('/settings/bank-accounts')}
           />
         </View>
       </View>
@@ -287,7 +258,7 @@ export default function SettingsScreen() {
           <SettingsItem 
             icon="lock-closed-outline" 
             title="Alterar Senha" 
-            onPress={handlePasswordReset}
+            onPress={() => router.push('/settings/change-password')}
           />
           <View style={styles.divider} />
           <SettingsItem 
@@ -317,53 +288,6 @@ export default function SettingsScreen() {
       </View>
     </ScrollView>
 
-      {/* Modal de Configuração Asaas */}
-      <Modal 
-        visible={isAsaasModalVisible} 
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setAsaasModalVisible(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
-          onPressOut={() => setAsaasModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Configurar Asaas</Text>
-              <TouchableOpacity onPress={() => setAsaasModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalLabel}>API Key do Asaas</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: Colors.bg, borderColor: Colors.borderStrong, color: Colors.text }]}
-              placeholder="prod_..."
-              placeholderTextColor="#475569"
-              value={asaasKey}
-              onChangeText={setAsaasKey}
-              secureTextEntry
-            />
-             <Text style={styles.modalHint}>
-               Você encontra sua chave em Configurações {'>'} Integrações no painel do Asaas.
-             </Text>
-
-            <TouchableOpacity 
-              style={[styles.saveBtn, isSaving && { opacity: 0.7 }]} 
-              onPress={handleSaveAsaas}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.saveBtnText}>Salvar Configurações</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Modal de Pareamento WhatsApp (Pairing Code) */}
       <Modal 
@@ -452,7 +376,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: StaticColors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -473,7 +396,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: StaticColors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -484,11 +406,9 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: StaticColors.text,
   },
   itemSubtitle: {
     fontSize: 13,
-    color: StaticColors.textSecondary,
     marginTop: 2,
   },
   divider: {
@@ -516,31 +436,25 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: StaticColors.text,
   },
   modalLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: StaticColors.textSecondary,
     marginBottom: 12,
   },
   modalInput: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Palette.borderStrong,
     padding: 16,
-    color: StaticColors.text,
     fontSize: 16,
     fontFamily: Typography.fonts.body,
   },
   modalHint: {
     fontSize: 12,
-    color: StaticColors.textMuted,
     marginTop: 12,
     lineHeight: 18,
   },
   saveBtn: {
-    backgroundColor: StaticColors.primary,
     height: 60,
     borderRadius: 20,
     justifyContent: 'center',
@@ -558,19 +472,16 @@ const styles = StyleSheet.create({
   },
   pairingInstruction: {
     fontSize: 16,
-    color: StaticColors.text,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
   },
   codeBox: {
     borderWidth: 2,
-    borderColor: StaticColors.primary,
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 40,
     marginBottom: 32,
-    shadowColor: StaticColors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
@@ -579,7 +490,6 @@ const styles = StyleSheet.create({
   codeText: {
     fontSize: 40,
     fontWeight: '800',
-    color: StaticColors.text,
     letterSpacing: 8,
   },
   pollingIndicator: {
@@ -588,7 +498,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   pollingText: {
-    color: StaticColors.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },

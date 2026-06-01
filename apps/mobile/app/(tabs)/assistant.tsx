@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
-import { Colors, Typography, Spacing, Palette } from '../../constants/theme';
+import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
 import { useAudioRecorder, useAudioPlayer } from 'expo-audio';
 import * as Audio from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
@@ -32,6 +32,8 @@ const QUICK_ACTIONS = [
 ];
 
 export default function AssistantScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
@@ -151,6 +153,8 @@ export default function AssistantScreen() {
   };
 
   const retryLastMessage = () => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     if (!failedMsgId) return;
     const failedMsg = messages.find(m => m.id === failedMsgId);
     if (!failedMsg) return;
@@ -398,7 +402,7 @@ export default function AssistantScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: Platform.OS === 'ios' ? 50 : 20, zIndex: 10 },
   headerBlur: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },

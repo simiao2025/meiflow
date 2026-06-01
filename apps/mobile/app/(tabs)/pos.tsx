@@ -8,10 +8,12 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Colors, Typography, Palette } from '../../constants/theme';
+import { Typography, Palette, useThemeColors } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 
 export default function PosScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
@@ -44,6 +46,8 @@ export default function PosScreen() {
   };
 
   const addToCart = (product: any) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     setCart(prev => {
       const existing = prev.find(c => c.item.id === product.id);
       if (existing) {
@@ -58,6 +62,8 @@ export default function PosScreen() {
   };
 
   const removeFromCart = (productId: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     setCart(prev => {
       const existing = prev.find(c => c.item.id === productId);
       if (existing && existing.quantity > 1) {
@@ -217,7 +223,7 @@ export default function PosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: { padding: 24, paddingTop: 60, flexDirection: 'row', alignItems: 'center' },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },

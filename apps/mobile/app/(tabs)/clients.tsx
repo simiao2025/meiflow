@@ -8,9 +8,11 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Colors, Typography, Spacing, Palette } from '../../constants/theme';
+import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
 
 export default function ClientsScreen() {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,8 @@ export default function ClientsScreen() {
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const maskCpf = (value: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     const digits = value.replace(/\D/g, '').slice(0, 11);
     return digits
       .replace(/(\d{3})(\d)/, '$1.$2')
@@ -56,6 +60,8 @@ export default function ClientsScreen() {
   };
 
   const maskCnpj = (value: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     const digits = value.replace(/\D/g, '').slice(0, 14);
     return digits
       .replace(/(\d{2})(\d)/, '$1.$2')
@@ -65,11 +71,15 @@ export default function ClientsScreen() {
   };
 
   const handleDocumentChange = (text: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     const masked = personType === 'pf' ? maskCpf(text) : maskCnpj(text);
     setNewClientDocument(masked);
   };
 
   const handlePersonTypeChange = (type: 'pf' | 'pj') => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     setPersonType(type);
     setNewClientDocument('');
   };
@@ -283,6 +293,8 @@ export default function ClientsScreen() {
 import { useRouter } from 'expo-router';
 
 function ClientCard({ item, index }: any) {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
   const itemAnim = useRef(new Animated.Value(0)).current;
   const router = useRouter();
 
@@ -291,11 +303,15 @@ function ClientCard({ item, index }: any) {
   }, []);
 
   const openWhatsApp = (phone: string) => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     const cleanPhone = phone.replace(/\D/g, '');
     Linking.openURL(`whatsapp://send?phone=55${cleanPhone}`);
   };
 
   const openMap = () => {
+  const Colors = useThemeColors();
+  const styles = getStyles(Colors);
     // Generate some mock coordinates near SP if the DB doesn't have lat/lng
     const mockLat = -23.550520 + (Math.random() * 0.1 - 0.05);
     const mockLng = -46.633308 + (Math.random() * 0.1 - 0.05);
@@ -337,7 +353,7 @@ function ClientCard({ item, index }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   header: { padding: 24, paddingTop: 60 },
   eyebrow: { color: Colors.primary, fontFamily: Typography.fonts.medium, fontSize: 10, letterSpacing: 2, marginBottom: 8 },
