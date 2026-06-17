@@ -217,8 +217,12 @@ async def get_pairing_code(req: EvolutionPairingRequest):
         raise HTTPException(status_code=500, detail="Credenciais da Evolution não configuradas.")
 
     # Busca a instância e o token do usuário usando admin para evitar problemas de RLS
-    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", req.user_id).single().execute()
-    profile_data = profile_resp.data
+    try:
+        profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", req.user_id).single().execute()
+        profile_data = profile_resp.data
+    except Exception as e:
+        logger.warning(f"Usuário não encontrado ou erro ao buscar profile: {e}")
+        profile_data = None
 
     if not profile_data or not profile_data.get("evolution_instance"):
         raise HTTPException(status_code=404, detail="Instância não encontrada para este usuário.")
