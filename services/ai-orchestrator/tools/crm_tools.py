@@ -60,11 +60,8 @@ class AgendarServicoInput(BaseModel):
 async def listar_clientes(user_id: str) -> str:
     """Lista todos os clientes cadastrados via CRM Service."""
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{CRM_SERVICE_URL}/clients/{user_id}", headers=get_headers())
-            resp.raise_for_status()
-            items = resp.json()
-
+        items = await _supabase_get("clients", {"user_id": f"eq.{user_id}"})
+        
         if not items:
             return "Nenhum cliente cadastrado."
 
@@ -73,6 +70,8 @@ async def listar_clientes(user_id: str) -> str:
             lines.append(f"- {c['name']} | WhatsApp: {c.get('whatsapp_number', '-')}")
         return "\n".join(lines)
     except Exception as e:
+        with open("error.log", "w") as f:
+            f.write(repr(e))
         return f"Erro ao acessar CRM Service: {str(e)}"
 
 @tool("cadastrar_cliente", args_schema=CadastrarClienteInput)
@@ -80,11 +79,9 @@ async def cadastrar_cliente(user_id: str, name: str, whatsapp_number: str) -> st
     """Cadastra um novo cliente via CRM Service."""
     try:
         payload = {"user_id": user_id, "name": name, "whatsapp_number": whatsapp_number}
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{CRM_SERVICE_URL}/clients", json=payload, headers=get_headers())
-            resp.raise_for_status()
-            data = resp.json()
-        return f"Cliente {name} cadastrado com sucesso! ID: {data.get('id')}"
+        data = await _supabase_post("clients", payload)
+        inserted_id = data[0].get('id') if data else 'N/A'
+        return f"Cliente {name} cadastrado com sucesso! ID: {inserted_id}"
     except Exception as e:
         return f"Erro ao cadastrar no CRM Service: {str(e)}"
 
@@ -92,10 +89,7 @@ async def cadastrar_cliente(user_id: str, name: str, whatsapp_number: str) -> st
 async def consultar_agendamentos(user_id: str) -> str:
     """Consulta os agendamentos via CRM Service."""
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{CRM_SERVICE_URL}/appointments/{user_id}", headers=get_headers())
-            resp.raise_for_status()
-            items = resp.json()
+        items = await _supabase_get("appointments", {"user_id": f"eq.{user_id}"})
 
         if not items:
             return "Nenhum agendamento encontrado."
@@ -115,13 +109,12 @@ async def agendar_servico(user_id: str, client_id: str, data_hora: str, descrica
             "user_id": user_id,
             "client_id": client_id,
             "scheduled_at": data_hora,
-            "description": descricao
+            "description": descricao,
+            "status": "scheduled"
         }
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(f"{CRM_SERVICE_URL}/appointments", json=payload, headers=get_headers())
-            resp.raise_for_status()
-            data = resp.json()
-        return f"Agendamento confirmado para {data_hora}. ID: {data.get('id')}"
+        data = await _supabase_post("appointments", payload)
+        inserted_id = data[0].get('id') if data else 'N/A'
+        return f"Agendamento confirmado para {data_hora}. ID: {inserted_id}"
     except Exception as e:
         return f"Erro ao agendar no CRM Service: {str(e)}"
 

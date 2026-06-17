@@ -12,6 +12,8 @@ from shared.middleware import correlation_id_ctx
 FISCAL_SERVICE_URL = os.getenv("FISCAL_SERVICE_URL", "http://localhost:8002")
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
 
+from shared.database import supabase
+
 def get_headers():
     headers = {"X-Internal-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}
     cid = correlation_id_ctx.get()
@@ -26,10 +28,8 @@ class UserIdInput(BaseModel):
 async def consultar_das(user_id: str) -> str:
     """Consulta as guias DAS do MEI via Fiscal Service."""
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{FISCAL_SERVICE_URL}/das/{user_id}", headers=get_headers())
-            resp.raise_for_status()
-            records = resp.json()
+        resp = supabase.table("das_records").select("*").eq("user_id", user_id).execute()
+        records = resp.data
 
         if not records:
             return "Nenhuma guia DAS encontrada."
@@ -48,10 +48,8 @@ async def consultar_das(user_id: str) -> str:
 async def consultar_notas_fiscais(user_id: str) -> str:
     """Consulta as notas fiscais via Fiscal Service."""
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{FISCAL_SERVICE_URL}/invoices/{user_id}", headers=get_headers())
-            resp.raise_for_status()
-            items = resp.json()
+        resp = supabase.table("invoices").select("*").eq("user_id", user_id).execute()
+        items = resp.data
 
         if not items:
             return "Nenhuma nota fiscal encontrada."
