@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
 import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
@@ -50,8 +51,6 @@ export default function ClientsScreen() {
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const maskCpf = (value: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     const digits = value.replace(/\D/g, '').slice(0, 11);
     return digits
       .replace(/(\d{3})(\d)/, '$1.$2')
@@ -60,8 +59,6 @@ export default function ClientsScreen() {
   };
 
   const maskCnpj = (value: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     const digits = value.replace(/\D/g, '').slice(0, 14);
     return digits
       .replace(/(\d{2})(\d)/, '$1.$2')
@@ -71,15 +68,11 @@ export default function ClientsScreen() {
   };
 
   const handleDocumentChange = (text: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     const masked = personType === 'pf' ? maskCpf(text) : maskCnpj(text);
     setNewClientDocument(masked);
   };
 
   const handlePersonTypeChange = (type: 'pf' | 'pj') => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     setPersonType(type);
     setNewClientDocument('');
   };
@@ -121,6 +114,19 @@ export default function ClientsScreen() {
     
     const formattedAddress = `${newClientStreet}, ${newClientNumber} - ${newClientNeighborhood}, ${newClientCity} - ${newClientState}, ${newClientCep}`;
     
+    // Geocodificar endereço para obter coordenadas GPS
+    let clientLat: number | null = null;
+    let clientLng: number | null = null;
+    try {
+      const geocoded = await Location.geocodeAsync(formattedAddress);
+      if (geocoded && geocoded.length > 0) {
+        clientLat = geocoded[0].latitude;
+        clientLng = geocoded[0].longitude;
+      }
+    } catch (geoError) {
+      console.warn('Geocodificação falhou, salvando sem coordenadas:', geoError);
+    }
+    
     const { error } = await supabase.from('clients').insert({
       user_id: user.id,
       name: newClientName,
@@ -130,6 +136,8 @@ export default function ClientsScreen() {
       whatsapp_number: newClientPhone,
       person_type: personType,
       formatted_address: formattedAddress,
+      lat: clientLat,
+      lng: clientLng,
     });
 
     if (error) {
@@ -236,7 +244,7 @@ export default function ClientsScreen() {
               <TextInput style={styles.input} placeholder={personType === 'pf' ? 'Ex: João da Silva' : 'Ex: Silva Consultoria LTDA'} placeholderTextColor="#475569" value={newClientName} onChangeText={setNewClientName} />
 
               <Text style={styles.inputLabel}>{personType === 'pf' ? 'CPF *' : 'CNPJ *'}</Text>
-              <TextInput style={styles.input} placeholder={personType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00'} placeholderTextColor="#475569" keyboardType="numeric" value={newClientDocument} onChangeText={handleDocumentChange} maxLength={personType === 'pf' ? 14 : 18} />
+              <TextInput style={styles.input} placeholder={personType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00'} placeholderTextColor="#475569" keyboardType="number-pad" value={newClientDocument} onChangeText={handleDocumentChange} maxLength={personType === 'pf' ? 14 : 18} />
 
               <Text style={styles.inputLabel}>WhatsApp *</Text>
               <TextInput style={styles.input} placeholder="(11) 99999-9999" placeholderTextColor="#475569" keyboardType="phone-pad" value={newClientPhone} onChangeText={setNewClientPhone} />
@@ -250,7 +258,7 @@ export default function ClientsScreen() {
                 <View style={{flex: 1}}>
                   <Text style={styles.inputLabel}>CEP *</Text>
                   <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                    <TextInput style={[styles.input, {flex: 1}]} placeholder="00000-000" placeholderTextColor="#475569" keyboardType="numeric" value={newClientCep} onChangeText={fetchAddressByCep} maxLength={9} />
+                    <TextInput style={[styles.input, {flex: 1}]} placeholder="00000-000" placeholderTextColor="#475569" keyboardType="number-pad" value={newClientCep} onChangeText={fetchAddressByCep} maxLength={9} />
                     {isFetchingCep && <ActivityIndicator color={Colors.primary} style={{position: 'absolute', right: 12, top: 18}} />}
                   </View>
                 </View>
@@ -264,7 +272,7 @@ export default function ClientsScreen() {
               <TextInput style={styles.input} placeholder="Nome da rua" placeholderTextColor="#475569" value={newClientStreet} onChangeText={setNewClientStreet} />
 
               <Text style={styles.inputLabel}>Número *</Text>
-              <TextInput style={styles.input} placeholder="123" placeholderTextColor="#475569" keyboardType="numeric" value={newClientNumber} onChangeText={setNewClientNumber} />
+              <TextInput style={styles.input} placeholder="123" placeholderTextColor="#475569" keyboardType="number-pad" value={newClientNumber} onChangeText={setNewClientNumber} />
 
               <View style={{flexDirection: 'row', gap: 12}}>
                 <View style={{flex: 2}}>
@@ -278,7 +286,7 @@ export default function ClientsScreen() {
               </View>
 
               <TouchableOpacity style={[styles.saveBtn, isSaving && {opacity: 0.7}, {marginTop: 12}]} onPress={handleSaveClient} disabled={isSaving}>
-                <LinearGradient colors={['#10B981', '#059669']} style={styles.saveBtnGrad}>
+                <LinearGradient colors={[Colors.primary, Colors.primaryLight]} style={styles.saveBtnGrad}>
                   {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Salvar Cliente Completo</Text>}
                 </LinearGradient>
               </TouchableOpacity>
@@ -303,20 +311,16 @@ function ClientCard({ item, index }: any) {
   }, []);
 
   const openWhatsApp = (phone: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     const cleanPhone = phone.replace(/\D/g, '');
     Linking.openURL(`whatsapp://send?phone=55${cleanPhone}`);
   };
 
   const openMap = () => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
-    // Generate some mock coordinates near SP if the DB doesn't have lat/lng
-    const mockLat = -23.550520 + (Math.random() * 0.1 - 0.05);
-    const mockLng = -46.633308 + (Math.random() * 0.1 - 0.05);
-    
-    router.push(`/map?clientId=${item.id}&clientName=${encodeURIComponent(item.name)}&clientAddress=${encodeURIComponent(item.address || 'São Paulo, SP')}&lat=${item.lat || mockLat}&lng=${item.lng || mockLng}`);
+    if (!item.lat || !item.lng) {
+      Alert.alert('GPS indisponível', 'Este cliente não possui coordenadas GPS. Edite o cadastro para atualizar o endereço.');
+      return;
+    }
+    router.push(`/map?clientId=${item.id}&clientName=${encodeURIComponent(item.name)}&clientAddress=${encodeURIComponent(item.formatted_address || 'Endereço não informado')}&lat=${item.lat}&lng=${item.lng}`);
   };
 
   return (

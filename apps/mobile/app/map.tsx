@@ -44,8 +44,6 @@ export default function MapScreen() {
   }, []);
 
   const openNavigation = () => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     if (!targetCoords) return;
     
     const url = Platform.select({

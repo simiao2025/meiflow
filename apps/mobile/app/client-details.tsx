@@ -161,6 +161,17 @@ export default function ClientDetailsScreen() {
 
             <Section title="Localização">
               <InfoRow icon="location-outline" label="Endereço" value={client.formatted_address || 'Endereço não cadastrado'} />
+              {client.lat && client.lng ? (
+                <TouchableOpacity 
+                  style={styles.mapButton}
+                  onPress={() => router.push(`/map?clientId=${client.id}&clientName=${encodeURIComponent(client.name)}&clientAddress=${encodeURIComponent(client.formatted_address || '')}&lat=${client.lat}&lng=${client.lng}`)}
+                >
+                  <Ionicons name="navigate-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.mapButtonText}>Ver no Mapa / Navegar</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.noGpsText}>GPS não disponível para este cliente</Text>
+              )}
             </Section>
           </View>
         )}
@@ -384,5 +395,27 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#38BDF8',
     fontWeight: '600',
-  }
+  },
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D4AF37',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 12,
+    gap: 8,
+  },
+  mapButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  noGpsText: {
+    color: '#64748B',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
 });
