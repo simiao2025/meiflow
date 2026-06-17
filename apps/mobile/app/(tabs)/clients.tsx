@@ -31,6 +31,7 @@ export default function ClientsScreen() {
   const [newClientNeighborhood, setNewClientNeighborhood] = useState('');
   const [newClientCity, setNewClientCity] = useState('');
   const [newClientState, setNewClientState] = useState('');
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -118,7 +119,11 @@ export default function ClientsScreen() {
     let clientLat: number | null = null;
     let clientLng: number | null = null;
     try {
-      const geocoded = await Location.geocodeAsync(formattedAddress);
+      let geocoded = await Location.geocodeAsync(formattedAddress);
+      if (!geocoded || geocoded.length === 0) {
+        // Fallback para cidade/estado se falhar o endereço completo
+        geocoded = await Location.geocodeAsync(`${newClientCity} - ${newClientState}`);
+      }
       if (geocoded && geocoded.length > 0) {
         clientLat = geocoded[0].latitude;
         clientLng = geocoded[0].longitude;
@@ -127,18 +132,35 @@ export default function ClientsScreen() {
       console.warn('Geocodificação falhou, salvando sem coordenadas:', geoError);
     }
     
-    const { error } = await supabase.from('clients').insert({
-      user_id: user.id,
-      name: newClientName,
-      document: newClientDocument,
-      email: newClientEmail,
-      phone: newClientPhone,
-      whatsapp_number: newClientPhone,
-      person_type: personType,
-      formatted_address: formattedAddress,
-      lat: clientLat,
-      lng: clientLng,
-    });
+    let error;
+    if (editingClientId) {
+      const { error: updateError } = await supabase.from('clients').update({
+        name: newClientName,
+        document: newClientDocument,
+        email: newClientEmail,
+        phone: newClientPhone,
+        whatsapp_number: newClientPhone,
+        person_type: personType,
+        formatted_address: formattedAddress,
+        lat: clientLat,
+        lng: clientLng,
+      }).eq('id', editingClientId);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase.from('clients').insert({
+        user_id: user.id,
+        name: newClientName,
+        document: newClientDocument,
+        email: newClientEmail,
+        phone: newClientPhone,
+        whatsapp_number: newClientPhone,
+        person_type: personType,
+        formatted_address: formattedAddress,
+        lat: clientLat,
+        lng: clientLng,
+      });
+      error = insertError;
+    }
 
     if (error) {
       console.error(error);
@@ -157,9 +179,41 @@ export default function ClientsScreen() {
       setNewClientState('');
       setNewClientDocument('');
       setPersonType('pf');
+      setEditingClientId(null);
       loadClients();
     }
     setIsSaving(false);
+  };
+
+  const openEditModal = (client: any) => {
+    setEditingClientId(client.id);
+    setNewClientName(client.name || '');
+    setNewClientPhone(client.phone || '');
+    setNewClientDocument(client.document || '');
+    setNewClientEmail(client.email || '');
+    setPersonType(client.person_type || 'pf');
+    
+    setNewClientStreet('');
+    setNewClientNumber('');
+    setNewClientNeighborhood('');
+    setNewClientCity('');
+    setNewClientState('');
+    setNewClientCep('');
+
+    if (client.formatted_address) {
+      try {
+        const match = client.formatted_address.match(/^(.*),\s*(.*)\s*-\s*(.*),\s*(.*)\s*-\s*(.*),\s*(.*)$/);
+        if (match) {
+          setNewClientStreet(match[1]);
+          setNewClientNumber(match[2]);
+          setNewClientNeighborhood(match[3]);
+          setNewClientCity(match[4]);
+          setNewClientState(match[5]);
+          setNewClientCep(match[6]);
+        }
+      } catch (e) {}
+    }
+    setModalVisible(true);
   };
 
   return (
@@ -214,8 +268,11 @@ export default function ClientsScreen() {
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Novo Cliente</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+              <Text style={styles.modalTitle}>{editingClientId ? 'Editar Cliente' : 'Novo Cliente'}</Text>
+              <TouchableOpacity onPress={() => {
+                setModalVisible(false);
+                setEditingClientId(null);
+              }} style={styles.closeBtn}>
                 <Ionicons name="close" size={24} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -325,7 +382,11 @@ function ClientCard({ item, index }: any) {
 
   return (
     <Animated.View style={[styles.bezelOuter, { marginBottom: 16, opacity: itemAnim, transform: [{ translateY: itemAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
-      <View style={styles.bezelInner}>
+      <TouchableOpacity 
+        activeOpacity={0.8} 
+        onPress={() => router.push(`/client-details?id=${item.id}`)}
+        style={styles.bezelInner}
+      >
          <View style={styles.cardTop}>
             <View style={styles.avatar}>
                <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
@@ -334,6 +395,9 @@ function ClientCard({ item, index }: any) {
                <Text style={styles.clientName}>{item.name}</Text>
                <Text style={styles.clientSub}>{item.whatsapp_number || 'Sem contato'}</Text>
             </View>
+            <TouchableOpacity style={[styles.actionButton, { marginRight: 8 }]} onPress={() => openEditModal(item)}>
+               <Ionicons name="create-outline" size={18} color="#FBBF24" />
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { marginRight: 8 }]} onPress={openMap}>
                <Ionicons name="map" size={18} color="#7DD3FC" />
             </TouchableOpacity>
@@ -347,12 +411,12 @@ function ClientCard({ item, index }: any) {
                <Text style={styles.statLabel}>RECEITA</Text>
                <Text style={styles.statVal}>R$ {item.total_revenue?.toFixed(2).replace('.', ',') || '0,00'}</Text>
             </View>
-            <TouchableOpacity style={styles.detailsBtn}>
+            <View style={styles.detailsBtn}>
                <Text style={styles.detailsText}>HISTÓRICO</Text>
                <Ionicons name="arrow-forward" size={12} color={Colors.primary} />
-            </TouchableOpacity>
+            </View>
          </View>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
