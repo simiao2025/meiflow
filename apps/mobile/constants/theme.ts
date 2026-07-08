@@ -23,28 +23,8 @@ export const DarkPalette = {
   accent: '#EAB308',
   secondary: '#A1A1AA',
   warning: '#F59E0B',
-};
-
-export const LightPalette = {
-  black: '#FFFFFF', // Inverted logic for bg
-  navyDeep: '#F8FAFC', // Very light gray (Slate 50)
-  white: '#050505', // Text color equivalent
-  
-  gold: {
-    50:  '#FEFCE8',
-    400: '#FACC15',
-    500: '#EAB308', // Gold stays gold
-    600: '#CA8A04',
-    900: '#713F12',
-  },
-  
-  glass: 'rgba(0, 0, 0, 0.03)',
-  border: 'rgba(0, 0, 0, 0.06)',
-  borderStrong: 'rgba(0, 0, 0, 0.12)',
-  
-  accent: '#CA8A04',
-  secondary: '#64748B', // Slate 500
-  warning: '#D97706',
+  success: '#22C55E',
+  destructive: '#EF4444',
 };
 
 // Default export for backward compatibility during refactor
@@ -66,30 +46,13 @@ export const DarkColors = {
   
   border: DarkPalette.border,
   borderStrong: DarkPalette.borderStrong,
-};
-
-export const LightColors = {
-  bg: LightPalette.black, // #FFFFFF
-  bgCard: '#F1F5F9', // Slate 100
-  bgInner: '#E2E8F0', // Slate 200
   
-  primary: LightPalette.gold[600],
-  primaryLight: LightPalette.gold[500],
-  primaryMuted: 'rgba(202, 138, 4, 0.1)',
-  secondary: LightPalette.secondary,
-  
-  text: '#0F172A', // Slate 900
-  textSecondary: '#475569', // Slate 600
-  textMuted: '#94A3B8', // Slate 400
-  
-  border: LightPalette.border,
-  borderStrong: LightPalette.borderStrong,
+  success: '#22C55E',
+  destructive: '#EF4444',
 };
 
 // Default fallback
 export const Colors = DarkColors;
-
-import { useThemeStore } from '../stores/themeStore';
 
 export const useThemeColors = () => {
   return DarkColors;
@@ -98,8 +61,10 @@ export const useThemeColors = () => {
 export const Typography = {
   fonts: {
     display: 'PlusJakartaSans_800ExtraBold',
-    body: 'PlusJakartaSans_500Medium',
+    bold: 'PlusJakartaSans_700Bold',
     medium: 'PlusJakartaSans_600SemiBold',
+    body: 'PlusJakartaSans_500Medium',
+    regular: 'PlusJakartaSans_400Regular',
     light: 'PlusJakartaSans_400Regular',
   },
   sizes: {
@@ -112,31 +77,4 @@ export const Typography = {
   }
 };
 
-export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48, // Macro-whitespace
-};
 
-export const Effects = {
-  // Technique: Double-Bezel (Doppelrand)
-  glassCard: {
-    backgroundColor: Palette.glass,
-    borderRadius: 24,
-    borderWidth: 0.5,
-    borderColor: Palette.border,
-  },
-  innerBezel: {
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 0,
-  },
-  // Custom Motion Curves
-  curves: {
-    premium: [0.32, 0.72, 0, 1], // Cinematic Inertia
-  }
-};

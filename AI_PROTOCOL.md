@@ -1,31 +1,65 @@
-# Protocolo de IA - MEIFlow (AI Context)
+# 📜 Protocolo de IA — MEIFlow (AI Context)
 
-Este documento define as regras e o **Protocolo Pós-Implementação** que a Inteligência Artificial (Assistentes, Agentes de Codificação) deve OBRIGATORIAMENTE seguir em todas as suas interações e modificações de código neste projeto.
+> ⚠️ **PRIMEIRO, LEIA `AGENTS.md`** — contém o contexto completo e atualizado do projeto.
 
-## Contexto do Projeto
-- **Nome:** MEIFlow
-- **Stack:** React Native (Expo) no Mobile, Python (FastAPI/LangGraph) no Backend de IA, Supabase como Backend DB/Auth.
-- **Objetivo:** Facilitar a gestão financeira, fiscal e gerar oportunidades para MEIs.
+Este documento define as regras e o **Protocolo Pós-Implementação** que todo agente de IA deve OBRIGATORIAMENTE seguir.
+
+---
+
+## 🔄 Informação da Sessão
+
+- **Última atualização:** Julho 2026
+- **APK**: v1.0 instalado em dispositivo de testes
+- **Status geral**: FASE 0 (segurança) + FASE 1 (unificação bancária) concluídas
 
 ---
 
 ## 🚀 PROTOCOLO PÓS-IMPLEMENTAÇÃO
 
-Toda vez que uma nova *Feature* for implementada, uma *Refatoração* for concluída ou *Bugs* severos forem corrigidos, a IA **DEVE** executar o seguinte fluxo antes de finalizar sua tarefa:
+Toda vez que implementar uma feature, refatorar ou corrigir bugs:
 
-### 1. Atualizar Contexto (Update Context)
-- Revisar se a nova funcionalidade altera a arquitetura (`docs/architecture/README.md`) ou o modelo de dados (`docs/plans/2026-05-08-meiflow-design.md`).
-- Atualizar o `CHANGELOG.md`.
+### 1. Atualizar Contexto (OBRIGATÓRIO)
+- Atualizar `AGENTS.md` se arquitetura/schemas mudarem
+- Atualizar `CHANGELOG.md`
+- Atualizar `docs/architecture/README.md` se schema ou arquitetura mudar
 
-### 2. Executar Skills de Qualidade e Segurança
-A IA deve declarar e aplicar os guidelines e checklists das seguintes skills:
-- **`/cybersecurity-web`**: Verificar possíveis injeções (SQLi no Supabase RLS), armazenamento seguro de tokens, sanitização e OWASP Top 10.
-- **`/code-purity`**: Auditar o código alterado usando as diretrizes de pureza: procurar dead code, duplicação (DRY), imports perdidos, consoles esquecidos ou nomenclatura ambígua.
-- **`/performance-optimization`**: Garantir que as alterações não introduziram gargalos de renderização (React Native) ou gargalos N+1 (Supabase/Python).
+### 2. Rodar `npx fallow` (OBRIGATÓRIO)
+Execute **imediatamente** após cada fase/mudança significativa e **corrija os problemas antes de prosseguir**:
+```bash
+cd MEIFlow && npx fallow
+```
 
-### 3. Rodar a Bateria de Testes
-Sempre realizar/rodar os testes pertinentes:
-- Rodar o linter/formatação (Ex: `npm run audit:all` no JS/TS, `ruff check .` no Python).
-- Testar a aplicação (ou sugerir o comando exato para o usuário se não puder rodar em CI local).
+### 3. Executar Skills de Qualidade
+Aplicar os guidelines das skills:
+- **`/security-review`** — OWASP, injeções, tokens, RLS, sanitização
+- **`/code-purity`** — dead code, DRY, imports perdidos, consoles esquecidos
+
+### 4. Rodar Bateria de Testes
+- Python: `ruff check .` nos serviços
+- Lint/typecheck quando aplicável
 
 **NUNCA DECLARE UMA TAREFA COMO COMPLETA SEM PASSAR POR ESTE PROTOCOLO.**
+
+---
+
+## 🔐 Regras de Segurança (Aplicar Sempre)
+
+1. **Nunca usar CORS aberto (`*`)** em produção — usar whitelist específica
+2. **Nunca logar senhas, tokens ou dados sensíveis** — mascarar emails e credentials
+3. **`temporary_password`** só deve ser retornado quando `ENV=development`
+4. **Chave de criptografia** (`app.config`) protegida por RLS — só acessível via `SECURITY DEFINER` triggers
+5. **VIEW `vw_accounts_full`** NUNCA expõe valores decriptados de `client_id`/`client_secret`
+
+---
+
+## 📌 Contexto do Projeto
+
+| Item | Detalhe |
+|------|---------|
+| **Nome** | MEIFlow |
+| **Stack** | React Native (Expo), Python (FastAPI/LangGraph), Supabase |
+| **Objetivo** | Gestão financeira, fiscal e oportunidades para MEIs |
+| **Leia primeiro** | `AGENTS.md` (contexto completo) |
+| **Arquitetura** | `docs/architecture/README.md` |
+| **Contribuição** | `CONTRIBUTING.md` |
+| **Segurança** | `SECURITY.md` |

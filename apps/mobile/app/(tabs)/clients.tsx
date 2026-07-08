@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
+import { Typography, Palette, useThemeColors } from '../../constants/theme';
 
 export default function ClientsScreen() {
   const Colors = useThemeColors();
@@ -115,13 +115,11 @@ export default function ClientsScreen() {
     
     const formattedAddress = `${newClientStreet}, ${newClientNumber} - ${newClientNeighborhood}, ${newClientCity} - ${newClientState}, ${newClientCep}`;
     
-    // Geocodificar endereço para obter coordenadas GPS
     let clientLat: number | null = null;
     let clientLng: number | null = null;
     try {
       let geocoded = await Location.geocodeAsync(formattedAddress);
       if (!geocoded || geocoded.length === 0) {
-        // Fallback para cidade/estado se falhar o endereço completo
         geocoded = await Location.geocodeAsync(`${newClientCity} - ${newClientState}`);
       }
       if (geocoded && geocoded.length > 0) {
@@ -129,7 +127,37 @@ export default function ClientsScreen() {
         clientLng = geocoded[0].longitude;
       }
     } catch (geoError) {
-      console.warn('Geocodificação falhou, salvando sem coordenadas:', geoError);
+      console.warn('Expo Geocoding falhou, tentando fallback:', geoError);
+    }
+
+    // Fallback absoluto: OpenStreetMap (Nominatim) se o Google Play Services falhar
+    if (!clientLat || !clientLng) {
+      try {
+        console.log('Tentando geocodificação via OpenStreetMap...');
+        const query = encodeURIComponent(`${newClientStreet}, ${newClientNumber}, ${newClientCity}, ${newClientState}`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+          headers: { 'User-Agent': 'MEIFlowApp/1.0' }
+        });
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          clientLat = parseFloat(data[0].lat);
+          clientLng = parseFloat(data[0].lon);
+        } else {
+          // Fallback apenas para a cidade
+          const cityQuery = encodeURIComponent(`${newClientCity}, ${newClientState}, Brasil`);
+          const cityRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cityQuery}&limit=1`, {
+            headers: { 'User-Agent': 'MEIFlowApp/1.0' }
+          });
+          const cityData = await cityRes.json();
+          if (cityData && cityData.length > 0) {
+            clientLat = parseFloat(cityData[0].lat);
+            clientLng = parseFloat(cityData[0].lon);
+          }
+        }
+      } catch (osmError) {
+        console.warn('OSM Geocoding também falhou:', osmError);
+      }
     }
     
     let error;
@@ -245,7 +273,7 @@ export default function ClientsScreen() {
             data={filtered} 
             keyExtractor={item => item.id} 
             contentContainerStyle={styles.list}
-            renderItem={({ item, index }) => <ClientCard item={item} index={index} />}
+            renderItem={({ item, index }) => <ClientCard item={item} index={index} onEdit={openEditModal} />}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name="people-outline" size={48} color={Colors.textMuted} />
@@ -357,7 +385,7 @@ export default function ClientsScreen() {
 
 import { useRouter } from 'expo-router';
 
-function ClientCard({ item, index }: any) {
+function ClientCard({ item, index, onEdit }: any) {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
   const itemAnim = useRef(new Animated.Value(0)).current;
@@ -395,7 +423,7 @@ function ClientCard({ item, index }: any) {
                <Text style={styles.clientName}>{item.name}</Text>
                <Text style={styles.clientSub}>{item.whatsapp_number || 'Sem contato'}</Text>
             </View>
-            <TouchableOpacity style={[styles.actionButton, { marginRight: 8 }]} onPress={() => openEditModal(item)}>
+            <TouchableOpacity style={[styles.actionButton, { marginRight: 8 }]} onPress={() => onEdit(item)}>
                <Ionicons name="create-outline" size={18} color="#FBBF24" />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { marginRight: 8 }]} onPress={openMap}>

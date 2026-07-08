@@ -21,6 +21,20 @@ def get_headers():
 
 from shared.database import supabase
 
+def _get_user_id_from_token(token: str) -> str | None:
+    """
+    Valida um JWT token contra o Supabase Auth e retorna o user_id.
+    Usada pelos endpoints que exigem autenticação.
+    """
+    try:
+        resp = supabase.auth.get_user(token)
+        if resp and resp.user:
+            return resp.user.id
+    except Exception as e:
+        logger = __import__("logging").getLogger(__name__)
+        logger.warning(f"Erro ao validar token: {e}")
+    return None
+
 async def _supabase_get(table: str, filters: dict = None):
     query = supabase.table(table).select("*")
     if filters:

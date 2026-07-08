@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Colors, Typography, Spacing, Palette } from '../../constants/theme';
+import { Colors, Typography, Palette } from '../../constants/theme';
 import { useRouter } from 'expo-router';
 import { generateAndSharePDF, getExportHtmlTemplate } from '../../utils/pdfGenerator';
 

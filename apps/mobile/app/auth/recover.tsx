@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../../constants/theme';
 
 export default function RecoverPasswordScreen() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -204,8 +205,8 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 32 },
   logoBadge: {
     width: 64, height: 64, borderRadius: 20,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)', justifyContent: 'center', alignItems: 'center',
-    marginBottom: 16, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)',
+    backgroundColor: Colors.primaryMuted, justifyContent: 'center', alignItems: 'center',
+    marginBottom: 16, borderWidth: 1, borderColor: Colors.primaryLight,
   },
   logoEmoji: { fontSize: 28 },
   title: { fontSize: 28, fontWeight: '800', color: '#F8FAFC', letterSpacing: -1 },
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, color: '#F1F5F9', fontSize: 16 },
   actionButton: {
-    backgroundColor: '#38BDF8', height: 56, borderRadius: 16,
+    backgroundColor: Colors.primary, height: 56, borderRadius: 16,
     justifyContent: 'center', alignItems: 'center', marginTop: 8,
   },
   actionButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },

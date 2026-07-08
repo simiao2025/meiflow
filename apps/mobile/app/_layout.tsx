@@ -98,7 +98,8 @@ export default function RootLayout() {
 
       const inAuthGroup = segments[0] === 'auth';
       const inOnboarding = segments[0] === 'onboarding';
-      const isChangingPassword = segments[segments.length - 1] === 'change-password';
+      const inTabs = segments[0] === '(tabs)';
+      const isChangingPassword = segments[0] === 'auth' && segments[1] === 'change-password';
 
       const hasCnpj = !!profile?.cnpj;
       const mustChangePassword = !!profile?.must_change_password;
@@ -107,7 +108,7 @@ export default function RootLayout() {
         router.replace('/onboarding');
       } else if (hasCnpj && mustChangePassword && !isChangingPassword) {
         router.replace('/auth/change-password');
-      } else if (hasCnpj && !mustChangePassword && (inAuthGroup || inOnboarding || isChangingPassword)) {
+      } else if (hasCnpj && !mustChangePassword && (!segments[0] || inAuthGroup || inOnboarding || isChangingPassword)) {
         router.replace('/(tabs)');
       }
     }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ActivityIndicator } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { BalanceCard } from '../BalanceCard';
 
@@ -19,7 +20,7 @@ describe('BalanceCard', () => {
       <BalanceCard balance={null} loading={true} onRefresh={jest.fn()} />
     );
     
-    expect(UNSAFE_getByType('ActivityIndicator')).toBeTruthy();
+    expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
   });
 
   it('alterna visibilidade do saldo ao pressionar botão', () => {

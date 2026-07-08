@@ -7,10 +7,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
-import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
+import { Typography, Palette, useThemeColors } from '../../constants/theme';
 import { useAudioRecorder, useAudioPlayer } from 'expo-audio';
 import * as Audio from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
@@ -121,7 +121,7 @@ export default function AssistantScreen() {
 
       const response = await fetch(`${apiUrl}/api/v1/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true' },
         body: JSON.stringify({
           message: text,
           user_id: user?.id,
@@ -216,7 +216,7 @@ export default function AssistantScreen() {
       const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' as any });
       const response = await fetch(`${apiUrl}/api/v1/chat/audio`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true' },
         body: JSON.stringify({ audio_base64: base64Audio, user_id: user?.id, provider: selectedProvider }),
       });
       const data = await response.json();
@@ -252,8 +252,8 @@ export default function AssistantScreen() {
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
     >
       <LinearGradient colors={[Colors.bg, '#0B1121']} style={styles.container}>
         {/* Header */}

@@ -39,7 +39,7 @@ export default function ExportScreen() {
     const mockDasStatus = "Pago em 20/05/2026";
     
     const html = getExportHtmlTemplate(
-      user.name || 'Empreendedor MEI',
+      user.user_metadata?.name || 'Empreendedor MEI',
       selectedMonth,
       mockRevenue,
       mockExpenses,

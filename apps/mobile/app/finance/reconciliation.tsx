@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,7 +39,7 @@ export default function ReconciliationScreen() {
     }
   };
 
-  const processAction = async (approved: boolean, index: number) => {
+  const processAction = useCallback(async (approved: boolean, index: number) => {
     const currentItem = suggestions[index];
     try {
       if (approved && currentItem) {
@@ -53,24 +53,20 @@ export default function ReconciliationScreen() {
       }
     } catch (e) {
       console.error("Error processing reconciliation action", e);
-      // rollback or show error
     }
     
     if (index < suggestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
       translateX.value = withSpring(0);
     } else {
-      setCurrentIndex(prev => prev + 1); // move past end
+      setCurrentIndex(prev => prev + 1);
     }
-  };
+  }, [suggestions, translateX]);
 
-  const handleAction = (approved: boolean) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
-    // Optimistic UI updates
+  const handleAction = useCallback((approved: boolean) => {
     const current = currentIndex;
     processAction(approved, current);
-  };
+  }, [currentIndex, processAction]);
 
   if (loading) {
     return (

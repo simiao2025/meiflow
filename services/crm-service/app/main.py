@@ -30,13 +30,20 @@ app = FastAPI(
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
-# Suporte a CORS para o navegador
+# CORS restrito — apenas origens confiáveis
+# Em produção, substituir pelas URLs reais do frontend
+ALLOWED_ORIGINS = [
+    "http://localhost:8081",  # Expo dev
+    "http://localhost:3000",  # Web dev alternativo
+    "https://app.meiflow.com.br",  # Produção
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Internal-Key", "X-Correlation-ID"],
 )
 
 from shared.cache import redis_client
@@ -423,15 +430,23 @@ async def kiwify_webhook(req: KiwifyWebhookRequest):
         Por segurança, você deverá trocar sua senha no primeiro acesso.
         """
         
-        logger.info(f"E-MAIL SIMULADO ENVIADO PARA {req.email}:\n{email_content}")
+        # Log seguro: apenas confirma envio, sem expor senha
+        logger.info(f"E-MAIL DE BOAS-VINDAS ENVIADO PARA {req.email[:3]}***@{'***'.join(req.email.split('@')[1:])}")
 
-        return {
+        env = os.getenv("ENV", "development")
+        
+        result = {
             "status": "success",
             "user_id": user_id,
             "email_sent": True,
-            "temporary_password": temp_password, # Retornamos para facilitar a simulação do usuário
             "message": "Usuário criado e e-mail de boas-vindas enviado."
         }
+        
+        # Apenas em dev/local expõe a senha temporária
+        if env == "development":
+            result["temporary_password"] = temp_password
+        
+        return result
 
     except Exception as e:
         logger.error(f"Erro no processamento do webhook Kiwify: {e}")

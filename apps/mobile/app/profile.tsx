@@ -111,10 +111,10 @@ export default function ProfileScreen() {
           <View style={styles.form}>
             <SectionTitle icon="person" title="Dados Pessoais" />
             <InputField label="Nome Completo" icon="person-outline" value={fullName} onChange={setFullName} placeholder="Seu nome" />
-            <InputField label="CPF" icon="card-outline" value={cpf} onChange={setCpf} placeholder="000.000.000-00" keyboard="numeric" />
+            <InputField label="CPF" icon="card-outline" value={cpf} onChange={setCpf} placeholder="000.000.000-00" keyboard="number-pad" />
 
             <SectionTitle icon="business" title="Dados da Empresa" />
-            <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={setCnpj} placeholder="00.000.000/0000-00" keyboard="numeric" />
+            <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={setCnpj} placeholder="00.000.000/0000-00" keyboard="number-pad" />
             <InputField label="Razão Social" icon="document-text-outline" value={razaoSocial} onChange={setRazaoSocial} placeholder="Sua empresa MEI" />
             <InputField label="Nome Fantasia" icon="star-outline" value={fantasyName} onChange={setFantasyName} placeholder="Nome comercial" />
             <InputField label="Atividade" icon="briefcase-outline" value={activity} onChange={setActivity} placeholder="Ex: Serviços de TI" />
@@ -122,7 +122,7 @@ export default function ProfileScreen() {
             <SectionTitle icon="location" title="Endereço" />
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <InputField label="CEP" icon="map-outline" value={cep} onChange={setCep} placeholder="00000-000" keyboard="numeric" />
+                <InputField label="CEP" icon="map-outline" value={cep} onChange={setCep} placeholder="00000-000" keyboard="number-pad" />
               </View>
               <View style={{ width: 80 }}>
                 <InputField label="UF" icon="navigate-outline" value={uf} onChange={setUf} placeholder="SP" autoCap="characters" />
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   profileHeader: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 32,
     marginTop: 10,
   },
@@ -260,6 +260,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#F1F5F9',
     fontSize: 16,
+    textAlign: 'left',
   },
   row: {
     flexDirection: 'row',

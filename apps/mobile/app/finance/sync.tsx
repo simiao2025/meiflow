@@ -24,17 +24,22 @@ export default function OpenFinanceSync() {
 
   const checkBanks = async () => {
     if (!user) return;
-    const { count } = await supabase
-      .from('bank_accounts')
+    // Consulta conectores Pluggy (Open Finance) — schema financial
+    const { count, error } = await supabase
+      .from('pluggy_connectors')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('status', 'login_succeeded');
     
+    if (error) {
+      console.warn('Erro ao buscar conectores:', error.message);
+    }
     setConnectedBanks(count || 0);
   };
 
   const handleConnect = async () => {
     if (connectedBanks === 0) {
-      alert("Nenhum banco conectado! Por favor, vá em Ajustes > Contas Bancárias e adicione um banco primeiro.");
+      alert("Nenhum banco conectado! Vá em Ajustes > Contas Bancárias e conecte um banco via Open Finance.");
       return;
     }
     
@@ -102,7 +107,7 @@ export default function OpenFinanceSync() {
         )}
         
         {connectedBanks === 0 && (
-          <TouchableOpacity onPress={() => router.push('/settings/bank-accounts')} style={{ marginTop: 20 }}>
+          <TouchableOpacity onPress={() => router.push('/settings/bank-accounts' as any)} style={{ marginTop: 20 }}>
              <Text style={{ color: Colors.primary, textDecorationLine: 'underline' }}>Gerenciar Contas Bancárias</Text>
           </TouchableOpacity>
         )}

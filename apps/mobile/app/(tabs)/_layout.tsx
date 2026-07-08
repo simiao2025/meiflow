@@ -25,7 +25,7 @@ export default function TabLayout() {
           paddingBottom: 0,
         },
         tabBarBackground: () => (
-          <BlurView intensity={30} tint={isDarkMode ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
         ),
         headerStyle: {
           backgroundColor: Colors.bg,
@@ -80,7 +80,7 @@ export default function TabLayout() {
           title: 'IA',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.aiIcon, focused && { backgroundColor: Colors.primary, elevation: 5 }]}>
-              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={28} color={focused ? (isDarkMode ? '#FFF' : '#000') : color} />
+              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={28} color={focused ? '#FFF' : color} />
             </View>
           ),
         }}

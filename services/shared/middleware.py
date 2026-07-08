@@ -16,7 +16,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        # CSP permissivo para APIs internas — permite chamadas aos serviços necessários
+        response.headers["Content-Security-Policy"] = "default-src 'self'; connect-src 'self' https://*.supabase.co https://api.pluggy.ai https://sandbox.asaas.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:"
         return response
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):

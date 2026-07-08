@@ -5,8 +5,9 @@ import logging
 import re
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import PlainTextResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -18,9 +19,41 @@ from integrations.audio_service import AudioService
 from app.scheduler import start_scheduler
 from shared.middleware import SecurityHeadersMiddleware, CorrelationIdMiddleware
 import httpx
-from tools.crm_tools import _supabase_get, _supabase_patch, _supabase_post
+from tools.crm_tools import _supabase_get, _supabase_patch, _supabase_post, _get_user_id_from_token
+
+# Rate Limiter
+from shared.rate_limiter import reconciliation_limiter, approve_limiter
 
 logger = logging.getLogger(__name__)
+
+# Esquema de autenticação
+security_scheme = HTTPBearer(auto_error=False)
+
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+    request: Request | None = None,
+) -> str:
+    """Extrai o user_id do JWT (via Supabase Auth) ou X-User-Id header (fallback interno)."""
+    if credentials:
+        try:
+            user_id = await _get_user_id_from_token(credentials.credentials)
+            if user_id:
+                return user_id
+        except Exception as e:
+            logger.warning(f"Falha ao validar JWT: {e}")
+    
+    if request:
+        internal_key = request.headers.get("X-Internal-Key", "")
+        user_id_header = request.headers.get("X-User-Id", "")
+        if internal_key and user_id_header:
+            expected_key = getattr(settings, "INTERNAL_API_KEY", "") or ""
+            if expected_key and internal_key == expected_key:
+                return user_id_header
+    
+    raise HTTPException(
+        status_code=401,
+        detail="Autenticação necessária. Envie Authorization: Bearer <jwt> ou X-Internal-Key + X-User-Id.",
+    )
 
 app = FastAPI(title="MEIFlow AI Service", version="0.1.0")
 app.add_middleware(SecurityHeadersMiddleware)
@@ -476,30 +509,71 @@ async def whatsapp_webhook(request: Request, data: dict):
     return {"status": "processed"}
 
 @app.get("/api/finance/reconciliations")
-async def get_reconciliations(user_id: str):
+async def get_reconciliations(
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Retorna sugestões de conciliação para o usuário autenticado.
+    Rate limit: 30 requisições/minuto (LLM caro).
+    """
+    # Rate limit por user_id
+    allowed, retry_after = reconciliation_limiter.check(user_id)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas requisições. Tente novamente em {retry_after} segundos.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    
     try:
         from agents.accounting.reconciler import reconciler_agent
+        from agents.accounting.categorizer import categorizer_agent
         
         # 1. Fetch un-reconciled bank statements
-        statements = await _supabase_get("bank_statements", {
-            "user_id": f"eq.{user_id}",
-            "reconciled": "is.false"
-        }) or []
-        
-        # 2. Fetch pending invoices and DAS
-        invoices = await _supabase_get("invoices", {
-            "user_id": f"eq.{user_id}",
-            "status": "eq.autorizada"
-        }) or []
-        
-        das_records = await _supabase_get("das_records", {
-            "user_id": f"eq.{user_id}",
-            "status": "eq.pending"
-        }) or []
-        
-        # 3. Use the AI Reconciler
-        suggestions = reconciler_agent.suggest_matches(statements, invoices, das_records)
-        
+        statements = (
+            await _supabase_get("bank_statements", {
+                "user_id": f"eq.{user_id}",
+                "reconciled": "is.false",
+            })
+        ) or []
+
+        if not statements:
+            return {"success": True, "suggestions": [], "message": "Nenhuma transação pendente para conciliar."}
+
+        # 2. Categorizar statements com LLM
+        profile = await _supabase_get("profiles", {"id": f"eq.{user_id}"})
+        cnae_context = profile[0].get("atividade_cnae", "") if profile else ""
+
+        try:
+            categorized = await categorizer_agent.categorize_statements(statements, cnae_context)
+            # Atualizar categorias no banco (async, não bloqueante)
+            for stmt in categorized:
+                if stmt.get("category_ai") and stmt.get("id"):
+                    await _supabase_patch("bank_statements", "id", stmt["id"], {
+                        "category_ai": stmt["category_ai"],
+                    })
+        except Exception as cat_err:
+            logger.warning(f"Categorizador falhou (continuando): {cat_err}")
+            categorized = statements
+
+        # 3. Fetch pending invoices and DAS
+        invoices = (
+            await _supabase_get("invoices", {
+                "user_id": f"eq.{user_id}",
+                "status": "eq.autorizada",
+            })
+        ) or []
+
+        das_records = (
+            await _supabase_get("das_records", {
+                "user_id": f"eq.{user_id}",
+                "status": "eq.pending",
+            })
+        ) or []
+
+        # 4. Use the AI Reconciler (avançado)
+        suggestions = reconciler_agent.suggest_matches(categorized, invoices, das_records)
+
         return {"success": True, "suggestions": suggestions}
     except Exception as e:
         logger.error(f"Error getting reconciliations: {e}")
@@ -513,35 +587,63 @@ class ApproveReconciliationRequest(BaseModel):
     description: str
 
 @app.post("/api/finance/reconciliations/approve")
-async def approve_reconciliation(data: ApproveReconciliationRequest):
+async def approve_reconciliation(
+    data: ApproveReconciliationRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Aprova uma sugestão de conciliação.
+    Rate limit: 60 requisições/minuto.
+    """
+    # Rate limit por user_id
+    allowed, retry_after = approve_limiter.check(user_id)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas requisições. Tente novamente em {retry_after} segundos.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    
     try:
-        # 3. Se for das_payment, altera status do DAS para pago
-        if data.match_type == "das_payment":
-            await _supabase_patch("das_records", "id", data.match_id, {"status": "paid"})
-            
-        # 4. Criar transaction (Fluxo de caixa real)
-        transaction_payload = {
-            "user_id": "extract_from_auth_or_pass_it", # Na verdade, precisamos pegar o user_id. Vamos buscar o statement.
-        }
-        
-        # Fetch the statement to get user_id and other info
-        statements = await _supabase_get("bank_statements", {"id": f"eq.{data.statement_id}"})
+        # Verificar que o statement pertence ao usuário autenticado
+        statements = await _supabase_get("bank_statements", {
+            "id": f"eq.{data.statement_id}",
+            "user_id": f"eq.{user_id}",
+        })
+
         if not statements:
-            raise HTTPException(status_code=404, detail="Statement não encontrado")
-            
+            raise HTTPException(status_code=404, detail="Statement não encontrado ou não pertence ao usuário.")
+
         statement = statements[0]
-        
+
+        # 1. Se for match com DAS, alterar status para pago
+        if "das" in (data.match_type or ""):
+            await _supabase_patch("das_records", "id", data.match_id, {"status": "paid"})
+
+        # 2. Criar transação no fluxo de caixa
         transaction_payload = {
-            "user_id": statement["user_id"],
+            "user_id": user_id,
             "type": "receita" if statement["amount"] > 0 else "despesa",
             "amount": abs(statement["amount"]),
-            "category": "Conciliação",
-            "description": data.description,
-            "bank_statement_id": statement["id"]
+            "category": data.match_type or "Conciliação",
+            "description": data.description or statement.get("description", ""),
+            "bank_statement_id": statement["id"],
         }
         await _supabase_post("transactions", transaction_payload)
-        
+
+        # 3. Marcar bank_statement como conciliado
+        await _supabase_patch("bank_statements", "id", statement["id"], {"reconciled": True})
+
+        # 4. Se matched_invoice_id, vincular
+        if data.match_type == "invoice_receipt" and data.match_id:
+            await _supabase_patch("bank_statements", "id", statement["id"], {
+                "matched_invoice_id": data.match_id,
+            })
+
+        logger.info(f"Reconciliação aprovada: statement={data.statement_id}, match={data.match_type}")
         return {"success": True, "message": "Conciliação aprovada com sucesso."}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error approving reconciliation: {e}")
         raise HTTPException(status_code=500, detail="Erro ao aprovar conciliação.")

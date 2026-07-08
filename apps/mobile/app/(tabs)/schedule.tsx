@@ -8,7 +8,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
-import { Typography, Spacing, Palette, useThemeColors } from '../../constants/theme';
+import { Typography, Palette, useThemeColors } from '../../constants/theme';
 import { scheduleLocalPush, requestNotificationPermissions } from '../../utils/notifications';
 import { useRouter } from 'expo-router';
 

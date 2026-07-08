@@ -29,13 +29,20 @@ app = FastAPI(
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
-# Adiciona suporte a CORS para o navegador
+# CORS restrito — apenas origens confiáveis
+# Em produção, substituir pelas URLs reais do frontend
+ALLOWED_ORIGINS = [
+    "http://localhost:8081",  # Expo dev
+    "http://localhost:3000",  # Web dev alternativo
+    "https://app.meiflow.com.br",  # Produção
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Internal-Key", "X-Correlation-ID"],
 )
 
 from shared.cache import redis_client

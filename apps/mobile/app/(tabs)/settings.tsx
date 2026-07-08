@@ -86,7 +86,13 @@ export default function SettingsScreen() {
         },
         body: JSON.stringify({ user_id: user?.id, phone_number: whatsappNumber })
       });
-      const data = await response.json();
+      const textData = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(textData);
+      } catch (parseError) {
+        throw new Error(`Parse Error: ${textData.substring(0, 50)}`);
+      }
       
       if (!response.ok) throw new Error(data.detail || 'Falha ao buscar código.');
       
@@ -143,8 +149,8 @@ export default function SettingsScreen() {
         <Ionicons name={icon} size={22} color={Colors.primary} />
       </View>
       <View style={styles.itemContent}>
-        <Text style={styles.itemTitle}>{title}</Text>
-        {subtitle && <Text style={styles.itemSubtitle}>{subtitle}</Text>}
+        <Text style={[styles.itemTitle, { color: Colors.text }]}>{title}</Text>
+        {subtitle && <Text style={[styles.itemSubtitle, { color: Colors.textSecondary }]}>{subtitle}</Text>}
       </View>
       {toggle ? (
         <Switch 
@@ -206,7 +212,13 @@ export default function SettingsScreen() {
                     },
                     body: JSON.stringify({ user_id: user?.id, cnpj: profile.cnpj })
                   });
-                  const data = await res.json();
+                  const textData = await res.text();
+                  let data: any = {};
+                  try {
+                    data = JSON.parse(textData);
+                  } catch (parseError) {
+                    throw new Error(`Parse Error: ${textData.substring(0, 50)}`);
+                  }
                   if (!res.ok) throw new Error(data.detail || 'Falha ao criar instância. Tente novamente mais tarde.');
                   await refreshProfile();
                   Alert.alert('Sucesso', 'Robô provisionado! Agora você pode vincular seu celular.');
@@ -235,7 +247,7 @@ export default function SettingsScreen() {
             icon="wallet-outline" 
             title="Contas Bancárias" 
             subtitle="Gerencie seus bancos conectados" 
-            onPress={() => router.push('/settings/bank-accounts')}
+            onPress={() => router.push('/settings/bank-accounts' as any)}
           />
         </View>
       </View>
@@ -246,7 +258,7 @@ export default function SettingsScreen() {
           <SettingsItem 
             icon="lock-closed-outline" 
             title="Alterar Senha" 
-            onPress={() => router.push('/settings/change-password')}
+            onPress={() => router.push('/settings/change-password' as any)}
           />
           <View style={styles.divider} />
           <SettingsItem 

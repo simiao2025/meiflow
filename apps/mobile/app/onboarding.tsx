@@ -18,6 +18,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { validateCPF, validateCNPJ, maskCPF, maskCNPJ, maskCEP } from '../utils/validation';
+import { Colors, Palette } from '../constants/theme';
 
 export default function OnboardingScreen() {
   const [fullName, setFullName] = useState('');
@@ -114,40 +115,35 @@ export default function OnboardingScreen() {
 
   const SectionTitle = ({ icon, title }: { icon: any, title: string }) => (
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={20} color="#38BDF8" style={{ marginRight: 8 }} />
+      <Ionicons name={icon} size={20} color={Colors.primary} style={{ marginRight: 8 }} />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
 
   return (
-    <ImageBackground 
-      source={require('../assets/images/onboarding_bg.jpg')} 
+    <LinearGradient 
+      colors={[Colors.bg, Colors.bgInner]}
       style={styles.container}
-      resizeMode="cover"
     >
-      <LinearGradient 
-        colors={['rgba(15, 23, 42, 0.85)', 'rgba(15, 23, 42, 0.98)']} 
-        style={styles.overlay}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Bem-vindo ao MEIFlow</Text>
-              <Text style={styles.subtitle}>Complete seu perfil para que possamos cuidar da sua burocracia.</Text>
-            </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Bem-vindo ao MEIFlow</Text>
+            <Text style={styles.subtitle}>Complete seu perfil para que possamos cuidar da sua burocracia.</Text>
+          </View>
 
             <View style={styles.form}>
               {/* Seção 1: Dados Pessoais */}
               <SectionTitle icon="person" title="Dados Pessoais" />
               <InputField label="Nome Completo" icon="person-outline" value={fullName} onChange={setFullName} placeholder="Seu nome" />
-              <InputField label="CPF" icon="card-outline" value={cpf} onChange={(val: string) => setCpf(maskCPF(val))} placeholder="000.000.000-00" keyboard="numeric" />
+              <InputField label="CPF" icon="card-outline" value={cpf} onChange={(val: string) => setCpf(maskCPF(val))} placeholder="000.000.000-00" keyboard="number-pad" />
 
               {/* Seção 2: Dados da Empresa */}
               <SectionTitle icon="business" title="Dados da Empresa" />
-              <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={(val: string) => setCnpj(maskCNPJ(val))} placeholder="00.000.000/0000-00" keyboard="numeric" />
+              <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={(val: string) => setCnpj(maskCNPJ(val))} placeholder="00.000.000/0000-00" keyboard="number-pad" />
               <InputField label="Razão Social" icon="document-text-outline" value={razaoSocial} onChange={setRazaoSocial} placeholder="Sua empresa MEI" />
               <InputField label="Nome Fantasia" icon="star-outline" value={fantasyName} onChange={setFantasyName} placeholder="Nome comercial (opcional)" />
               <InputField label="Ramo de Atividade / CNAE" icon="briefcase-outline" value={activity} onChange={setActivity} placeholder="Ex: Serviços de TI" />
@@ -156,7 +152,7 @@ export default function OnboardingScreen() {
               <SectionTitle icon="location" title="Endereço da Empresa" />
               <View style={styles.row}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <InputField label="CEP" icon="map-outline" value={cep} onChange={(val: string) => setCep(maskCEP(val))} placeholder="00000-000" keyboard="numeric" />
+                  <InputField label="CEP" icon="map-outline" value={cep} onChange={(val: string) => setCep(maskCEP(val))} placeholder="00000-000" keyboard="number-pad" />
                 </View>
                 <View style={{ width: 80 }}>
                   <InputField label="UF" icon="navigate-outline" value={uf} onChange={setUf} placeholder="SP" autoCap="characters" />
@@ -180,9 +176,8 @@ export default function OnboardingScreen() {
               <View style={{ height: 40 }} />
             </View>
           </ScrollView>
-        </KeyboardAvoidingView>
-      </LinearGradient>
-    </ImageBackground>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -243,7 +238,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#38BDF8',
+    color: Colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -279,13 +274,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   button: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: Colors.primary,
     height: 60,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
-    shadowColor: '#38BDF8',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

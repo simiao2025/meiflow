@@ -8,12 +8,16 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Palette } from '../../constants/theme';
+
+import * as Linking from 'expo-linking';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -34,25 +38,38 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { error, data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: 'https://superlative-frangollo-9bc749.netlify.app',
+        },
+      });
 
-    if (error) {
-      Alert.alert('Erro no Cadastro', error.message);
+      if (error) {
+        Alert.alert('Erro no Cadastro', error.message);
+      } else {
+        // Se a sessão já veio logada, não alerta ir pro login.
+        if (data?.session) {
+          router.replace('/onboarding');
+        } else {
+          Alert.alert(
+            'Sucesso!', 
+            'Verifique seu e-mail para confirmar a conta.',
+            [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+          );
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao conectar com o servidor.');
+    } finally {
       setLoading(false);
-    } else {
-      Alert.alert(
-        'Sucesso!', 
-        'Verifique seu e-mail para confirmar a conta.',
-        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
-      );
     }
   };
 
   return (
-    <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.container}>
+    <LinearGradient colors={[Colors.bg, Colors.bgInner]} style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
@@ -61,70 +78,72 @@ export default function RegisterScreen() {
           <Ionicons name="arrow-back" size={24} color="#F8FAFC" />
         </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Criar Conta</Text>
-          <Text style={styles.subtitle}>Inicie sua jornada MEI de sucesso hoje</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="E-mail profissional"
-              placeholderTextColor="#64748B"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <Text style={styles.title}>Criar Conta</Text>
+            <Text style={styles.subtitle}>Inicie sua jornada MEI de sucesso hoje</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Escolha uma senha forte"
-              placeholderTextColor="#64748B"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="E-mail profissional"
+                placeholderTextColor="#64748B"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirme sua senha"
-              placeholderTextColor="#64748B"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Escolha uma senha forte"
+                placeholderTextColor="#64748B"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-          <TouchableOpacity 
-            style={styles.registerButton} 
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.registerButtonText}>Começar Agora</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirme sua senha"
+                placeholderTextColor="#64748B"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Já possui uma conta? </Text>
-            <Link href="/auth/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.footerLink}>Entrar</Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity 
+              style={styles.registerButton} 
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.registerButtonText}>Começar Agora</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Já possui uma conta? </Text>
+              <Link href="/auth/login" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.footerLink}>Entrar</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -136,12 +155,16 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingTop: 80, // Espaço para o backButton
   },
   backButton: {
     position: 'absolute',
-    top: 60,
+    top: Platform.OS === 'ios' ? 60 : 40,
     left: 24,
     zIndex: 10,
   },
@@ -182,20 +205,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   registerButton: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: Colors.primary,
     height: 60,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
-    shadowColor: '#38BDF8',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
   },
   registerButtonText: {
-    color: '#FFFFFF',
+    color: Palette.black,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -205,11 +228,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    color: '#94A3B8',
+    color: Colors.textSecondary,
     fontSize: 15,
   },
   footerLink: {
-    color: '#38BDF8',
+    color: Colors.primary,
     fontSize: 15,
     fontWeight: '700',
   },

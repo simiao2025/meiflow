@@ -88,7 +88,7 @@ export default function ChangePasswordScreen() {
         >
           <View style={styles.header}>
             <View style={styles.iconContainer}>
-              <Ionicons name="lock-closed" size={32} color="#38BDF8" />
+              <Ionicons name="lock-closed" size={32} color={Colors.primary} />
             </View>
             <Text style={styles.title}>Definir Nova Senha</Text>
             <Text style={styles.subtitle}>
@@ -175,12 +175,12 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    backgroundColor: Colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.2)',
+    borderColor: Colors.primaryLight,
   },
   title: {
     fontSize: 28,
@@ -228,14 +228,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: Colors.primary,
     height: 60,
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
-    shadowColor: '#38BDF8',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
