@@ -173,6 +173,11 @@ const getStyles = (Colors: any) => StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    width: '100%',
+  },
   cardContainer: {
     width: '100%',
     maxWidth: 400,
