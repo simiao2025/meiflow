@@ -9,8 +9,9 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold 
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { Platform, LogBox } from 'react-native';
+import { Platform, LogBox, Alert } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 
 LogBox.ignoreLogs([
   'expo-notifications: Android Push notifications',
@@ -73,6 +74,33 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }, 5000);
     return () => clearTimeout(splashTimeout);
+  }, []);
+
+  // Verificar atualização OTA disponível
+  useEffect(() => {
+    const checkUpdate = async () => {
+      try {
+        if (__DEV__) return;
+        const { isAvailable } = await Updates.checkForUpdateAsync();
+        if (isAvailable) {
+          Alert.alert(
+            'Atualização Disponível',
+            'Uma nova versão do MEIFlow está disponível. Deseja atualizar agora?',
+            [
+              { text: 'Agora não', style: 'cancel' },
+              {
+                text: 'Atualizar',
+                onPress: async () => {
+                  await Updates.fetchUpdateAsync();
+                  await Updates.reloadAsync();
+                },
+              },
+            ]
+          );
+        }
+      } catch {}
+    };
+    checkUpdate();
   }, []);
 
   useEffect(() => {
