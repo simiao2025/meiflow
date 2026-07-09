@@ -72,22 +72,37 @@ export default function MapScreen() {
     ]);
   };
 
+  const qLat = targetCoords?.latitude ?? -23.550520;
+  const qLng = targetCoords?.longitude ?? -46.633308;
   const mapHtml = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         * { margin: 0; padding: 0; }
         body { background: #0A0A0A; }
         #map { width: 100vw; height: 100vh; }
+        .leaflet-control-zoom a { background: #1E293B !important; color: #F8FAFC !important; border-color: #334155 !important; }
+        .leaflet-control-attribution { background: rgba(15,23,42,0.8) !important; color: #64748B !important; }
+        .leaflet-control-attribution a { color: #94A3B8 !important; }
       </style>
     </head>
     <body>
-      <iframe id="map" width="100%" height="100%" frameborder="0" style="border:0"
-        src="https://www.google.com/maps/embed/v1/place?key=&q=${targetCoords ? `${targetCoords.latitude},${targetCoords.longitude}` : '-23.550520,-46.633308'}&center=${targetCoords ? `${targetCoords.latitude},${targetCoords.longitude}` : '-23.550520,-46.633308'}&zoom=15&maptype=roadmap"
-        allowfullscreen>
-      </iframe>
+      <div id="map"></div>
+      <script>
+        var map = L.map('map', { zoomControl: true, attributionControl: true }).setView([${qLat}, ${qLng}], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        L.marker([${qLat}, ${qLng}]).addTo(map)
+          .bindPopup('${String(clientName || 'Cliente').replace(/'/g, "\\'")}')
+          .openPopup();
+        ${location?.coords ? `L.circle([${location.coords.latitude}, ${location.coords.longitude}], { radius: 30, color: '#38BDF8', fillColor: '#38BDF8', fillOpacity: 0.2 }).addTo(map);` : ''}
+      </script>
     </body>
     </html>
   `;

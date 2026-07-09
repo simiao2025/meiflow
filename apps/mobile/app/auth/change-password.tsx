@@ -9,7 +9,8 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ImageBackground
+  ImageBackground,
+  ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
@@ -86,6 +87,11 @@ export default function ChangePasswordScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.content}
         >
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Ionicons name="lock-closed" size={32} color={Colors.primary} />
@@ -149,6 +155,7 @@ export default function ChangePasswordScreen() {
               )}
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </View>

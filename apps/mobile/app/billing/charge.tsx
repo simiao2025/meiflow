@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -169,7 +171,11 @@ user_id: user!.id,
       {isLoading ? (
         <ActivityIndicator size="large" color="#38BDF8" style={{ marginTop: 50 }} />
       ) : (
-        <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
           {/* Método de Pagamento */}
           <Text style={styles.label}>Forma de Pagamento</Text>
@@ -293,6 +299,7 @@ user_id: user!.id,
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );

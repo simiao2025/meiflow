@@ -7,7 +7,9 @@ import {
   TouchableOpacity, 
   TextInput,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -113,9 +115,13 @@ export default function EmitInvoiceScreen() {
       {loadingData ? (
         <ActivityIndicator size="large" color="#38BDF8" style={{ marginTop: 50 }} />
       ) : (
-        <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-          
-          <Text style={styles.label}>Cliente</Text>
+<KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+           
+           <Text style={styles.label}>Cliente</Text>
           <View style={styles.dropdownContainer}>
             {clients.map(c => (
               <TouchableOpacity 
@@ -195,6 +201,7 @@ export default function EmitInvoiceScreen() {
           </TouchableOpacity>
 
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );

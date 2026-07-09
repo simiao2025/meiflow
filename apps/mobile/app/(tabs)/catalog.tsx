@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Modal, ActivityIndicator, Animated, Alert, ScrollView, Platform
+  TextInput, Modal, ActivityIndicator, Animated, Alert, ScrollView, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -27,9 +27,8 @@ export default function CatalogScreen() {
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
   const [newItemType, setNewItemType] = useState<'service' | 'product'>('service');
-  const [newItemUnit, setNewItemUnit] = useState('UN');
+  const [newItemUnit, setNewItemUnit] = useState('unidade');
   
-  // Product specific fields
   const [newNCM, setNewNCM] = useState('');
   const [newBarcode, setNewBarcode] = useState('');
   const [newStock, setNewStock] = useState('0');
@@ -72,13 +71,17 @@ export default function CatalogScreen() {
       return;
     }
 
+    const VALID_UNITS = ['m2', 'hora', 'diaria', 'empreitada', 'unidade', 'kg', 'litro', 'metro'];
+    const unit = VALID_UNITS.includes(newItemUnit) ? newItemUnit : 'unidade';
+    if (unit !== newItemUnit) setNewItemUnit('unidade');
+
     const payload: any = {
       user_id: user.id,
       name: newItemName,
       description: newItemDesc,
       price: priceValue,
       type: newItemType,
-      billing_unit: newItemUnit,
+      billing_unit: unit,
       is_active: true
     };
 
@@ -102,7 +105,7 @@ export default function CatalogScreen() {
     setNewItemDesc('');
     setNewItemPrice('');
     setNewItemType('service');
-    setNewItemUnit('UN');
+    setNewItemUnit('unidade');
     setNewNCM('');
     setNewBarcode('');
     setNewStock('0');
@@ -161,6 +164,10 @@ export default function CatalogScreen() {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+          <KeyboardAvoidingView
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Novo Item no Catálogo</Text>
@@ -169,7 +176,7 @@ export default function CatalogScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
               <View style={styles.typeSelector}>
                 <TouchableOpacity 
                   style={[styles.typeBtn, newItemType === 'service' && styles.typeBtnActive]}
@@ -281,6 +288,7 @@ export default function CatalogScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>

@@ -10,7 +10,9 @@ import {
   Linking,
   Modal,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -303,19 +305,29 @@ export default function SettingsScreen() {
              if (pairingStatus !== 'polling') setPairingModalVisible(false);
           }}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Conectar WhatsApp</Text>
-              {pairingStatus !== 'polling' && (
-                <TouchableOpacity onPress={() => setPairingModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#94A3B8" />
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {pairingStatus === 'idle' || pairingStatus === 'loading' ? (
-              <>
-                <Text style={styles.modalLabel}>Seu Número (com DDD)</Text>
+<KeyboardAvoidingView 
+             style={{ flex: 1 }}
+             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+           >
+             <ScrollView 
+               style={{ flex: 1 }}
+               contentContainerStyle={{ flexGrow: 1 }}
+               keyboardShouldPersistTaps="handled"
+               showsVerticalScrollIndicator={false}
+             >
+             <View style={styles.modalContent}>
+             <View style={styles.modalHeader}>
+               <Text style={styles.modalTitle}>Conectar WhatsApp</Text>
+               {pairingStatus !== 'polling' && (
+                 <TouchableOpacity onPress={() => setPairingModalVisible(false)}>
+                   <Ionicons name="close" size={24} color="#94A3B8" />
+                 </TouchableOpacity>
+               )}
+             </View>
+             
+             {pairingStatus === 'idle' || pairingStatus === 'loading' ? (
+               <>
+                 <Text style={styles.modalLabel}>Seu Número (com DDD)</Text>
                 <TextInput
                   style={[styles.modalInput, { backgroundColor: Colors.bg, borderColor: Colors.borderStrong, color: Colors.text }]}
                   placeholder="5511999999999"
@@ -357,10 +369,12 @@ export default function SettingsScreen() {
                 <Text style={[styles.modalTitle, { marginTop: 16 }]}>Conectado!</Text>
                 <Text style={[styles.modalHint, { textAlign: 'center' }]}>Seu robô de IA agora está integrado ao seu WhatsApp.</Text>
               </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+)}
+           </View>
+           </ScrollView>
+           </KeyboardAvoidingView>
+         </TouchableOpacity>
+       </Modal>
     </>
   );
 }
