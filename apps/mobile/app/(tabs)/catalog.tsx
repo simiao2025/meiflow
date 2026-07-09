@@ -85,26 +85,28 @@ export default function CatalogScreen() {
     if (newItemType === 'product') {
       payload.ncm = newNCM;
       payload.barcode = newBarcode;
-      payload.stock_quantity = parseInt(newStock) || 0;
+      payload.stock_quantity = Math.max(0, parseInt(newStock) || 0);
     }
 
     const { error } = await supabase.from('catalog_items').insert(payload);
 
     if (error) {
-      console.error(error);
-      Alert.alert('Erro', 'Não foi possível salvar o item no catálogo.');
-    } else {
-      setModalVisible(false);
-      setNewItemName('');
-      setNewItemDesc('');
-      setNewItemPrice('');
-      setNewItemType('service');
-      setNewItemUnit('UN');
-      setNewNCM('');
-      setNewBarcode('');
-      setNewStock('0');
-      loadItems();
+      console.error('Erro ao salvar item:', error);
+      Alert.alert('Erro', error.message || 'Não foi possível salvar o item no catálogo.');
+      setIsSaving(false);
+      return;
     }
+
+    setModalVisible(false);
+    setNewItemName('');
+    setNewItemDesc('');
+    setNewItemPrice('');
+    setNewItemType('service');
+    setNewItemUnit('UN');
+    setNewNCM('');
+    setNewBarcode('');
+    setNewStock('0');
+    loadItems();
     setIsSaving(false);
   };
 

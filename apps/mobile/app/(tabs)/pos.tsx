@@ -18,8 +18,9 @@ export default function PosScreen() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<{item: any, quantity: number}[]>([]);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+const [cart, setCart] = useState<{item: any, quantity: number}[]>([]);
+const [isCheckingOut, setIsCheckingOut] = useState(false);
+const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'>('dinheiro');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -46,8 +47,6 @@ export default function PosScreen() {
   };
 
   const addToCart = (product: any) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     setCart(prev => {
       const existing = prev.find(c => c.item.id === product.id);
       if (existing) {
@@ -62,8 +61,6 @@ export default function PosScreen() {
   };
 
   const removeFromCart = (productId: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     setCart(prev => {
       const existing = prev.find(c => c.item.id === productId);
       if (existing && existing.quantity > 1) {
@@ -88,7 +85,7 @@ export default function PosScreen() {
           user_id: user.id,
           total_amount: totalAmount,
           status: 'completed',
-          payment_method: 'dinheiro' // Hardcoded for now
+          payment_method: paymentMethod
         })
         .select()
         .single();
@@ -197,26 +194,44 @@ export default function PosScreen() {
       {cart.length > 0 && (
         <Animated.View style={styles.cartBar}>
            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-           <View style={styles.cartContent}>
-              <View style={styles.cartInfo}>
-                 <Text style={styles.cartTotalLabel}>Total ({totalItems} itens)</Text>
-                 <Text style={styles.cartTotalValue}>R$ {totalAmount.toFixed(2).replace('.', ',')}</Text>
-              </View>
-              <TouchableOpacity 
-                style={[styles.checkoutBtn, isCheckingOut && { opacity: 0.7 }]} 
-                onPress={handleCheckout}
-                disabled={isCheckingOut}
-              >
-                {isCheckingOut ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <>
-                    <Text style={styles.checkoutBtnText}>Cobrar</Text>
-                    <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                  </>
-                )}
-              </TouchableOpacity>
-           </View>
+<View style={styles.cartContent}>
+               <View style={styles.cartInfo}>
+                  <Text style={styles.cartTotalLabel}>Total ({totalItems} itens)</Text>
+                  <Text style={styles.cartTotalValue}>R$ {totalAmount.toFixed(2).replace('.', ',')}</Text>
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+                    {(['dinheiro', 'pix', 'cartao'] as const).map(pm => (
+                      <TouchableOpacity
+                        key={pm}
+                        style={[styles.payMethodChip, paymentMethod === pm && styles.payMethodChipActive]}
+                        onPress={() => setPaymentMethod(pm)}
+                      >
+                        <Ionicons
+                          name={pm === 'dinheiro' ? 'cash-outline' : pm === 'pix' ? 'qr-code-outline' : 'card-outline'}
+                          size={14}
+                          color={paymentMethod === pm ? '#FFF' : Colors.textMuted}
+                        />
+                        <Text style={[styles.payMethodChipText, paymentMethod === pm && { color: '#FFF' }]}>
+                          {pm === 'dinheiro' ? 'Dinheiro' : pm === 'pix' ? 'PIX' : 'Cartão'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+               </View>
+               <TouchableOpacity 
+                 style={[styles.checkoutBtn, isCheckingOut && { opacity: 0.7 }]} 
+                 onPress={handleCheckout}
+                 disabled={isCheckingOut}
+               >
+                 {isCheckingOut ? (
+                   <ActivityIndicator color="#FFF" />
+                 ) : (
+                   <>
+                     <Text style={styles.checkoutBtnText}>Cobrar</Text>
+                     <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                   </>
+                 )}
+               </TouchableOpacity>
+            </View>
         </Animated.View>
       )}
     </View>
@@ -253,4 +268,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
   cartTotalValue: { color: Colors.text, fontSize: 24, fontFamily: Typography.fonts.display, marginTop: 4 },
   checkoutBtn: { backgroundColor: Colors.primary, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 16, borderRadius: 20 },
   checkoutBtnText: { color: '#FFF', fontSize: 16, fontFamily: Typography.fonts.display },
+  payMethodChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)' },
+  payMethodChipActive: { backgroundColor: Colors.primary },
+  payMethodChipText: { color: Colors.textMuted, fontSize: 11, fontFamily: Typography.fonts.medium },
 });

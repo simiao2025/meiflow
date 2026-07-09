@@ -67,6 +67,14 @@ export default function RootLayout() {
     PlusJakartaSans_800ExtraBold,
   });
 
+  // Timeout de segurança: esconde splash após 5s mesmo sem carregar tudo
+  useEffect(() => {
+    const splashTimeout = setTimeout(() => {
+      SplashScreen.hideAsync();
+    }, 5000);
+    return () => clearTimeout(splashTimeout);
+  }, []);
+
   useEffect(() => {
     if ((loaded || error) && !isLoading) {
       SplashScreen.hideAsync();

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import ChargeResultScreen from '../../components/billing/ChargeResultScreen';
@@ -43,14 +43,15 @@ export default function ChargeScreen() {
 
   const loadClients = async () => {
     try {
+      if (!user?.id) return;
       const { data } = await supabase
         .from('clients')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('name');
       if (data) setClients(data);
     } catch (e) {
-      console.error(e);
+      console.error('Erro ao carregar clientes:', e);
     } finally {
       setIsLoading(false);
     }
@@ -75,10 +76,15 @@ export default function ChargeScreen() {
     try {
       const numericAmount = parseFloat(amount.replace(',', '.'));
 
+      if (!user?.id) {
+        Alert.alert('Erro', 'Usuário não autenticado.');
+        return;
+      }
+
       // Dinheiro: salva direto via Supabase (não precisa de gateway)
       if (selectedMethod === 'cash') {
-        const { error } = await supabase.from('charges').insert({
-          user_id: user?.id,
+        const { error: chargeError } = await supabase.from('charges').insert({
+          user_id: user.id,
           client_id: selectedClient,
           amount: numericAmount,
           payment_method: 'cash',
@@ -86,9 +92,11 @@ export default function ChargeScreen() {
           description,
         });
 
+        if (chargeError) throw chargeError;
+
         // Também registra como receita no caixa financeiro
-        await supabase.from('transactions').insert({
-          user_id: user?.id,
+        const { error: txError } = await supabase.from('transactions').insert({
+          user_id: user.id,
           type: 'receita',
           amount: numericAmount,
           category: 'Pagamento em Dinheiro',
@@ -97,7 +105,7 @@ export default function ChargeScreen() {
           client_id: selectedClient,
         });
 
-        if (error) throw error;
+        if (txError) throw txError;
 
         Alert.alert('Registrado!', `R$ ${numericAmount.toFixed(2)} em dinheiro adicionado ao seu caixa.`, [
           { text: 'OK', onPress: () => router.back() },
@@ -109,12 +117,12 @@ export default function ChargeScreen() {
       const { data: chargeData, error } = await supabase
         .from('charges')
         .insert({
-          user_id: user?.id,
-          client_id: selectedClient,
-          amount: numericAmount,
-          payment_method: selectedMethod,
-          status: 'pending',
-          description,
+user_id: user!.id,
+           client_id: selectedClient,
+           amount: numericAmount,
+           payment_method: selectedMethod,
+           status: 'pending',
+           description,
           // Em produção real, esses campos viriam da resposta da API do Asaas
           external_reference: `pay_${Date.now()}`,
           payment_link: `https://sandbox.asaas.com/c/pay_${Date.now()}`,
@@ -200,7 +208,7 @@ export default function ChargeScreen() {
                 <Text style={styles.emptyText}>Nenhum cliente cadastrado.</Text>
                 <TouchableOpacity 
                   style={styles.addClientShortcut}
-                  onPress={() => router.push('/clients/new' as any)}
+                  onPress={() => router.push('/(tabs)/clients')}
                 >
                   <Ionicons name="person-add-outline" size={16} color="#38BDF8" />
                   <Text style={styles.addClientText}>Cadastrar Cliente Rápido</Text>

@@ -60,14 +60,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 // Inicialização e Listener
 const initAuth = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  useAuthStore.getState().setSession(session);
-  if (session) {
-    await useAuthStore.getState().refreshProfile();
-  } else {
-    useAuthStore.setState({ isProfileLoaded: true });
-  }
-};
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    useAuthStore.getState().setSession(session);
+    if (session) {
+      await useAuthStore.getState().refreshProfile();
+    } else {
+      useAuthStore.setState({ isProfileLoaded: true });
+    }
+} catch (e) {
+      // Offline: permite abrir o app mesmo sem conseguir validar sessão
+      console.warn('initAuth: falha ao obter sessão (provavelmente offline)');
+      useAuthStore.setState({ isLoading: false, isProfileLoaded: true });
+    }
+
+    // Timeout de segurança: garante que isLoading nunca fique travado
+    setTimeout(() => {
+      const state = useAuthStore.getState();
+      if (state.isLoading) {
+        useAuthStore.setState({ isLoading: false, isProfileLoaded: true });
+      }
+    }, 4000);
+  };
 
 initAuth();
 

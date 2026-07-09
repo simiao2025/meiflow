@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const mapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const targetCoords = lat && lng ? {
     latitude: parseFloat(lat as string),
@@ -26,6 +27,7 @@ export default function MapScreen() {
   useEffect(() => {
     (async () => {
       setLoading(true);
+
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permissão de acesso à localização foi negada.');
@@ -37,38 +39,71 @@ export default function MapScreen() {
         let currentLocation = await Location.getCurrentPositionAsync({});
         setLocation(currentLocation);
       } catch (error) {
-        setErrorMsg('Não foi possível obter sua localização atual.');
+        // Localização falhou mas o mapa ainda funciona
+        console.warn('Falha ao obter localização:', error);
       }
       setLoading(false);
     })();
+
+    return () => {
+      if (mapTimeoutRef.current) clearTimeout(mapTimeoutRef.current);
+    };
   }, []);
 
-  const openNavigation = () => {
+  const openNavigationExternal = () => {
     if (!targetCoords) return;
-    
-    const url = Platform.select({
-      ios: `maps:0,0?q=${clientAddress || clientName}@${targetCoords.latitude},${targetCoords.longitude}`,
-      android: `geo:0,0?q=${targetCoords.latitude},${targetCoords.longitude}(${clientName || 'Cliente'})`
-    });
 
-    if (url) {
-      Linking.openURL(url).catch(() => {
-        // Fallback for google maps web if geo/maps scheme fails
-        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${targetCoords.latitude},${targetCoords.longitude}`);
-      });
-    }
+    const latLng = `${targetCoords.latitude},${targetCoords.longitude}`;
+    const label = encodeURIComponent((clientName as string) || 'Cliente');
+
+    Alert.alert('Abrir com', 'Escolha um aplicativo de navegação', [
+      {
+        text: 'Google Maps',
+        onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latLng}`),
+      },
+      {
+        text: 'Waze',
+        onPress: () => Linking.openURL(`https://waze.com/ul?ll=${latLng}&navigate=yes`),
+      },
+      {
+        text: 'Cancelar',
+        style: 'cancel',
+      },
+    ]);
   };
+
+  const mapHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <style>
+        * { margin: 0; padding: 0; }
+        body { background: #0A0A0A; }
+        #map { width: 100vw; height: 100vh; }
+      </style>
+    </head>
+    <body>
+      <iframe id="map" width="100%" height="100%" frameborder="0" style="border:0"
+        src="https://www.google.com/maps/embed/v1/place?key=&q=${targetCoords ? `${targetCoords.latitude},${targetCoords.longitude}` : '-23.550520,-46.633308'}&center=${targetCoords ? `${targetCoords.latitude},${targetCoords.longitude}` : '-23.550520,-46.633308'}&zoom=15&maptype=roadmap"
+        allowfullscreen>
+      </iframe>
+    </body>
+    </html>
+  `;
+
+  const currentCoords = location?.coords;
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Buscando satélites...</Text>
+        <Text style={styles.loadingText}>Preparando mapa...</Text>
       </View>
     );
   }
 
-  if (errorMsg) {
+  if (errorMsg && !targetCoords) {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="warning-outline" size={48} color={Palette.warning} />
@@ -80,49 +115,24 @@ export default function MapScreen() {
     );
   }
 
-  const initialRegion = {
-    latitude: targetCoords?.latitude || location?.coords.latitude || -23.550520,
-    longitude: targetCoords?.longitude || location?.coords.longitude || -46.633308,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  };
-
   return (
     <View style={styles.container}>
-      <MapView 
-        style={styles.map} 
-        initialRegion={initialRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-        userInterfaceStyle="dark"
-      >
-        {targetCoords && (
-          <Marker
-            coordinate={targetCoords}
-            title={clientName as string || 'Cliente'}
-            description={clientAddress as string || 'Endereço do cliente'}
-            pinColor={Colors.primary}
-          />
-        )}
-        
-        {/* Simple straight line if we have both points - in reality we'd use a Directions API */}
-        {location && targetCoords && (
-          <Polyline
-            coordinates={[
-              { latitude: location.coords.latitude, longitude: location.coords.longitude },
-              targetCoords
-            ]}
-            strokeColor={Colors.primary}
-            strokeWidth={3}
-            lineDashPattern={[5, 5]}
-          />
-        )}
-      </MapView>
+      <View style={styles.map}>
+        <WebView
+          source={{ html: mapHtml }}
+          style={{ flex: 1 }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          originWhitelist={['*']}
+          scalesPageToFit={true}
+        />
+      </View>
 
       {/* Header overlay */}
       <LinearGradient 
         colors={['rgba(0,0,0,0.8)', 'transparent']} 
         style={styles.headerGradient}
+        pointerEvents="box-none"
       >
         <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
@@ -131,7 +141,7 @@ export default function MapScreen() {
         <View style={{ width: 44 }} />
       </LinearGradient>
 
-      {/* Bottom overlay with client info and navigate button */}
+      {/* Bottom overlay */}
       {targetCoords && (
         <View style={styles.bottomCard}>
           <View style={styles.clientInfo}>
@@ -144,9 +154,9 @@ export default function MapScreen() {
             </View>
           </View>
           
-          <TouchableOpacity style={styles.navigateBtn} onPress={openNavigation}>
+          <TouchableOpacity style={styles.navigateBtn} onPress={openNavigationExternal}>
             <Ionicons name="navigate" size={20} color="#000" />
-            <Text style={styles.navigateText}>Traçar Rota no Waze/Maps</Text>
+            <Text style={styles.navigateText}>Abrir Navegação (Maps/Waze)</Text>
           </TouchableOpacity>
         </View>
       )}
