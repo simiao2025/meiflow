@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
@@ -50,7 +51,7 @@ async function fetchWithRetry(
   }
 }
 
-export const api = {
+const api = {
   get: async (endpoint: string, useCache = true, cacheKey?: string) => {
     const key = cacheKey || endpoint;
 
@@ -141,9 +142,11 @@ export const financialService = {
       }
       
       data.forEach(t => {
-        balance += (t.amount || 0); // Assuming negative amounts for expenses or all are just sum (in this MVP it seems it just sums amount)
-        // Wait, if it's an expense it should be negative. The MVP just summed amount. 
-        // Let's keep balance logic but calculate revenue growth.
+        if (t.type === 'receita' || t.type === 'income') {
+          balance += t.amount;
+        } else if (t.type === 'despesa' || t.type === 'expense') {
+          balance -= t.amount;
+        }
         if (t.type === 'receita') {
           const d = new Date(t.date || new Date());
           if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
@@ -179,6 +182,7 @@ export const financialService = {
       return data;
     } catch (e) {
       console.error('Error fetching transactions:', e);
+      Alert.alert('Erro', 'Não foi possível carregar as transações.');
       return [];
     }
   },
@@ -197,6 +201,7 @@ export const fiscalService = {
       return data;
     } catch (e) {
       console.error('Error fetching DAS records:', e);
+      Alert.alert('Erro', 'Não foi possível carregar os DAS.');
       return [];
     }
   },
@@ -212,6 +217,7 @@ export const fiscalService = {
       return data;
     } catch (e) {
       console.error('Error fetching invoices:', e);
+      Alert.alert('Erro', 'Não foi possível carregar as notas fiscais.');
       return [];
     }
   },
@@ -284,7 +290,7 @@ export const aiFinanceService = {
   }
 };
 
-export const legalService = {
+const legalService = {
   getLegalAlerts: async () => {
     try {
       const response = await api.get('/api/legal/alerts', false);

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useThemeColors, Typography, Palette } from '../../constants/theme';
+import { useThemeColors, Typography, Palette } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../services/supabase';
-import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../../services/supabase';
+import { useAuthStore } from '../../../stores/authStore';
 import { useRouter } from 'expo-router';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://meiflow.supabase.co';

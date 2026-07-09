@@ -82,7 +82,9 @@ export default function EmitInvoiceScreen() {
       if (!user) throw new Error("Usuário não autenticado");
       
       const { fiscalService } = require('../../services/api');
-      await fiscalService.emitInvoice(user.id, selectedClient, selectedItem.id, parseFloat(quantity));
+      const qty = parseFloat(quantity);
+      if (isNaN(qty) || qty <= 0) throw new Error('Quantidade inválida');
+      await fiscalService.emitInvoice(user.id, selectedClient, selectedItem.id, qty);
 
       Alert.alert('Sucesso!', 'Nota Fiscal emitida com sucesso.', [
         { text: 'OK', onPress: () => {
@@ -99,7 +101,10 @@ export default function EmitInvoiceScreen() {
 
   const calculateTotal = () => {
     if (!selectedItem || !quantity) return '0,00';
-    return (parseFloat(selectedItem.price) * parseFloat(quantity)).toFixed(2).replace('.', ',');
+    const price = parseFloat(selectedItem.price);
+    const qty = parseFloat(quantity);
+    if (isNaN(price) || isNaN(qty)) return '0,00';
+    return (price * qty).toFixed(2).replace('.', ',');
   };
 
   return (

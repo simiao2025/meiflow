@@ -36,6 +36,8 @@ export default function AssistantScreen() {
   const styles = getStyles(Colors);
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<any[]>([]);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState('openai');
@@ -109,8 +111,10 @@ export default function AssistantScreen() {
     if (!text.trim() || loading) return;
 
     const userMsg = { id: Date.now().toString(), role: 'user', content: text };
-    const newMessages = [...messages, userMsg];
+    const currentMessages = messagesRef.current;
+    const newMessages = [...currentMessages, userMsg];
     setMessages(newMessages);
+    saveChatHistory(newMessages);
     setInputText('');
     setLoading(true);
     setFailedMsgId(null);
@@ -221,7 +225,8 @@ export default function AssistantScreen() {
       });
       const data = await response.json();
       const assistantMsgId = Date.now().toString();
-      const updated = [...messages,
+      const currentMessages = messagesRef.current;
+      const updated = [...currentMessages,
         { id: 'user_audio_' + assistantMsgId, role: 'user', content: data?.transcription || '🎤 Áudio enviado' },
         { id: assistantMsgId, role: 'assistant', content: data?.response || 'Não consegui processar o áudio.', audioUri: data?.audio_base64 }
       ];
@@ -229,7 +234,8 @@ export default function AssistantScreen() {
       saveChatHistory(updated);
       if (data?.audio_base64) playAudio(data.audio_base64, assistantMsgId);
     } catch (e) {
-      const updated = [...messages, {
+      const currentMessages = messagesRef.current;
+      const updated = [...currentMessages, {
         id: Date.now().toString(), role: 'assistant',
         content: '⚠️ Não consegui processar o áudio. Verifique a conexão.', isError: true,
       }];

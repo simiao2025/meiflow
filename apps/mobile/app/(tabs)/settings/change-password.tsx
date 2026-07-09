@@ -12,10 +12,10 @@ import {
   ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../services/supabase';
-import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../../services/supabase';
+import { useAuthStore } from '../../../stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeColors, Typography, Palette } from '../../constants/theme';
+import { useThemeColors, Typography, Palette } from '../../../constants/theme';
 
 export default function ChangePasswordSettingsScreen() {
   const [password, setPassword] = useState('');

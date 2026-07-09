@@ -36,32 +36,40 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      Alert.alert('Erro na Autenticação', error.message);
-      setLoading(false);
-    } else {
-      // Verifica se o perfil tem CNPJ usando o ID fresco retornado pela autenticação
+      if (error) {
+        Alert.alert('Erro na Autenticação', error.message);
+        setLoading(false);
+        return;
+      }
+
       const userId = authData?.user?.id;
-      
       if (!userId) {
         setLoading(false);
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .select('cnpj')
         .eq('id', userId)
         .single();
         
       if (profileError) {
-        console.warn('Erro ao buscar perfil no login:', profileError);
+        Alert.alert('Erro', 'Erro ao carregar perfil. Tente novamente.');
+        setLoading(false);
+        return;
       }
+
+      setLoading(false);
+    } catch (e: any) {
+      Alert.alert('Erro', e?.message || 'Ocorreu um erro ao fazer login.');
+      setLoading(false);
     }
   };
 

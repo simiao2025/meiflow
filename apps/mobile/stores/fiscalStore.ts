@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 
-export interface DAS {
+interface DAS {
   id: string;
   month: string;
   due_date: string;
@@ -9,7 +9,7 @@ export interface DAS {
   status: 'pendente' | 'pago' | 'vencido';
 }
 
-export interface Invoice {
+interface Invoice {
   id: string;
   direction: 'inbound' | 'outbound';
   type: 'nfe' | 'nfse' | 'cte';
@@ -35,9 +35,8 @@ export const useFiscalStore = create<FiscalState>((set) => ({
   fetchFiscalData: async (userId: string) => {
     set({ isLoading: true });
     try {
-      // Busca DAS (tabela fiscal.das_guides do initial_schema)
       const { data: dasData } = await supabase
-        .from('das_guides')
+        .from('das_records')
         .select('*')
         .eq('user_id', userId)
         .order('due_date', { ascending: false });

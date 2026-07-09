@@ -46,8 +46,16 @@ export default function FiscalScreen() {
              <View style={[styles.bezelOuter, { flex: 1.5 }]}>
                 <View style={styles.bezelInner}>
                    <Text style={styles.statLabel}>PRÓXIMO DAS</Text>
-                   <Text style={styles.statValLarge}>20 MAI</Text>
-                   <Text style={styles.statSub}>Vence em 8 dias</Text>
+                   <Text style={styles.statValLarge}>
+                     {dasRecords.length > 0
+                       ? new Date(dasRecords[0].due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()
+                       : '---'}
+                   </Text>
+                   <Text style={styles.statSub}>
+                     {dasRecords.length > 0
+                       ? `Vence em ${Math.ceil((new Date(dasRecords[0].due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} dias`
+                       : 'Nenhuma guia'}
+                   </Text>
                 </View>
              </View>
              <View style={[styles.bezelOuter, { flex: 1 }]}>
@@ -112,7 +120,7 @@ function ActionCard({ icon, label, color, onPress }: any) {
   );
 }
 
-function DasCard({ das, index }: any) {
+function DasCard({ das }: any) {
   const downloadPdf = async () => {
     // Generate a simple mock PDF for the DAS ticket
     const html = `

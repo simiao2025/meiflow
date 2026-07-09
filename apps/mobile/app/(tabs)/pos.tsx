@@ -105,7 +105,10 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
         .from('sales_order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        await supabase.from('sales_orders').delete().eq('id', orderData.id);
+        throw itemsError;
+      }
 
       Alert.alert(
         'Venda Concluída', 

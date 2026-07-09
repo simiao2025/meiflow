@@ -38,14 +38,11 @@ export default function AnnualDeclaration() {
     setIsTransmitting(true);
     try {
       // 1. Inserir no Supabase
-      const { error } = await supabase.from('annual_declarations').insert({
+      const { error } = await supabase.from('dasn_declarations').insert({
         user_id: user?.id,
         year: selectedYear,
-        revenue_services: revenueServices,
-        revenue_commerce: revenueCommerce,
-        has_employee: false,
-        status: 'enviada',
-        receipt_number: `DASN-${selectedYear}-${Date.now()}`
+        gross_revenue: totalRevenue,
+        status: 'sent',
       });
 
       if (error) throw error;

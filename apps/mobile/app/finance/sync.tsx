@@ -107,7 +107,7 @@ export default function OpenFinanceSync() {
         )}
         
         {connectedBanks === 0 && (
-          <TouchableOpacity onPress={() => router.push('/settings/bank-accounts' as any)} style={{ marginTop: 20 }}>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={{ marginTop: 20 }}>
              <Text style={{ color: Colors.primary, textDecorationLine: 'underline' }}>Gerenciar Contas Bancárias</Text>
           </TouchableOpacity>
         )}

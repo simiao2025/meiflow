@@ -229,17 +229,19 @@ export default function ClientsScreen() {
     setNewClientCep('');
 
     if (client.formatted_address) {
-      try {
-        const match = client.formatted_address.match(/^(.*),\s*(.*)\s*-\s*(.*),\s*(.*)\s*-\s*(.*),\s*(.*)$/);
-        if (match) {
-          setNewClientStreet(match[1]);
-          setNewClientNumber(match[2]);
-          setNewClientNeighborhood(match[3]);
-          setNewClientCity(match[4]);
-          setNewClientState(match[5]);
-          setNewClientCep(match[6]);
+      const parts = client.formatted_address.split(',').map((s: string) => s.trim());
+      if (parts.length >= 4) {
+        const streetNumber = parts[0].split('-').map((s: string) => s.trim());
+        setNewClientStreet(streetNumber[0] || '');
+        setNewClientNumber(streetNumber[1] || '');
+        setNewClientNeighborhood(parts[1] || '');
+        setNewClientCity(parts[2] || '');
+        if (parts.length >= 5) {
+          const stateZip = parts[parts.length - 2].split('-').map((s: string) => s.trim());
+          setNewClientState(stateZip[0] || '');
+          setNewClientCep(parts[parts.length - 1] || '');
         }
-      } catch (e) {}
+      }
     }
     setModalVisible(true);
   };

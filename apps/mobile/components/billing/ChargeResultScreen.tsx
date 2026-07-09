@@ -53,8 +53,10 @@ export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
   const simulateWebhook = async () => {
     if (!chargeResult || !user) return;
     try {
-      await supabase.from('charges').update({ status: 'paid' }).eq('id', chargeResult.id);
-      await supabase.from('transactions').insert({
+      const { error: updateError } = await supabase.from('charges').update({ status: 'paid' }).eq('id', chargeResult.id);
+      if (updateError) throw updateError;
+
+      const { error: txError } = await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'receita',
         amount: chargeResult.amount,
@@ -63,6 +65,11 @@ export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
         payment_method: chargeResult.payment_method,
         client_id: chargeResult.client_id,
       });
+
+      if (txError) {
+        await supabase.from('charges').update({ status: 'pending' }).eq('id', chargeResult.id);
+        throw txError;
+      }
 
       onReset();
       Alert.alert('Sucesso (Dev)', 'Webhook de pagamento simulado. O dinheiro entrou no fluxo de caixa!');

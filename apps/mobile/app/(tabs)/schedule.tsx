@@ -132,7 +132,7 @@ function StatItem({ label, val, color }: any) {
   );
 }
 
-function AppointmentCard({ item, index }: any) {
+function AppointmentCard({ item }: any) {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
   const time = new Date(item.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });

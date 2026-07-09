@@ -64,7 +64,8 @@ export default function ChargeScreen() {
       Alert.alert('Atenção', 'Selecione um cliente para cobrar.');
       return;
     }
-    if (!amount || parseFloat(amount.replace(',', '.')) <= 0) {
+    const numericAmount = parseFloat(amount.replace(',', '.'));
+    if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
       Alert.alert('Atenção', 'Informe um valor válido.');
       return;
     }
@@ -76,8 +77,6 @@ export default function ChargeScreen() {
 
     setIsSubmitting(true);
     try {
-      const numericAmount = parseFloat(amount.replace(',', '.'));
-
       if (!user?.id) {
         Alert.alert('Erro', 'Usuário não autenticado.');
         return;
@@ -107,7 +106,10 @@ export default function ChargeScreen() {
           client_id: selectedClient,
         });
 
-        if (txError) throw txError;
+        if (txError) {
+          await supabase.from('charges').delete().eq('id', chargeError as any);
+          throw txError;
+        }
 
         Alert.alert('Registrado!', `R$ ${numericAmount.toFixed(2)} em dinheiro adicionado ao seu caixa.`, [
           { text: 'OK', onPress: () => router.back() },

@@ -3,7 +3,7 @@
 // Inspired by Premium Fintechs, Black Cards, and Agency Design.
 // ============================================================
 
-export const DarkPalette = {
+const DarkPalette = {
   black: '#050505',
   navyDeep: '#0A0A0A',
   white: '#FFFFFF',
@@ -27,10 +27,9 @@ export const DarkPalette = {
   destructive: '#EF4444',
 };
 
-// Default export for backward compatibility during refactor
 export const Palette = DarkPalette;
 
-export const DarkColors = {
+const DarkColors = {
   bg: DarkPalette.black,
   bgCard: '#121212',
   bgInner: '#18181B',

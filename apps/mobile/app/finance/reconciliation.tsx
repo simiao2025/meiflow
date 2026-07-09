@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette, Typography, useThemeColors } from '../../constants/theme';
@@ -53,6 +53,8 @@ export default function ReconciliationScreen() {
       }
     } catch (e) {
       console.error("Error processing reconciliation action", e);
+      Alert.alert('Erro', 'Não foi possível aprovar a conciliação.');
+      return;
     }
     
     if (index < suggestions.length - 1) {
