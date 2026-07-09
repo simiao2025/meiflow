@@ -21,19 +21,23 @@ CREATE TABLE IF NOT EXISTS public.charges (
 
 ALTER TABLE public.charges ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own charges" ON public.charges;
 CREATE POLICY "Users can view their own charges"
     ON public.charges FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own charges" ON public.charges;
 CREATE POLICY "Users can insert their own charges"
     ON public.charges FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own charges" ON public.charges;
 CREATE POLICY "Users can update their own charges"
     ON public.charges FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own charges" ON public.charges;
 CREATE POLICY "Users can delete their own charges"
     ON public.charges FOR DELETE
     USING (auth.uid() = user_id);
