@@ -90,7 +90,7 @@ export default function RecoverPasswordScreen() {
       <ImageBackground source={require('../../assets/images/login_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
       <LinearGradient colors={['rgba(15, 23, 42, 0.6)', 'rgba(15, 23, 42, 0.95)']} style={StyleSheet.absoluteFillObject} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
+      <KeyboardAvoidingView behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300} style={styles.content}>
         <View style={styles.cardContainer}>
           <View style={styles.glassCard}>
             <View style={styles.header}>

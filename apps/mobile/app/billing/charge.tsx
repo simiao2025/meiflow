@@ -175,7 +175,7 @@ user_id: user!.id,
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
         >
         <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 

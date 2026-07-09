@@ -71,7 +71,7 @@ export default function RegisterScreen() {
   return (
     <LinearGradient colors={[Colors.bg, Colors.bgInner]} style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
         style={styles.content}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>

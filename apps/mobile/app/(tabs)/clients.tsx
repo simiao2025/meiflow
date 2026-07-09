@@ -298,7 +298,7 @@ export default function ClientsScreen() {
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
           <KeyboardAvoidingView
             style={{ flex: 1, justifyContent: 'flex-end' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
           >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>

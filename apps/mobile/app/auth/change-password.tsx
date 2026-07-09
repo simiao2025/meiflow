@@ -84,7 +84,7 @@ export default function ChangePasswordScreen() {
         style={styles.gradient}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
           style={styles.content}
         >
           <ScrollView 
