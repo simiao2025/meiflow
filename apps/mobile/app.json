@@ -47,7 +47,8 @@
           "locationAlwaysAndWhenInUsePermission": "O MEIFlow precisa da sua localização para navegar até clientes."
         }
       ],
-      ],
+      "expo-asset"
+    ],
     "experiments": {
       "typedRoutes": true
     },
