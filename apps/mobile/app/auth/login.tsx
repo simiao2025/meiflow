@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Dimensions
+  Dimensions,
+  ScrollView
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { supabase } from '../../services/supabase';
@@ -82,9 +83,15 @@ export default function LoginScreen() {
       />
 
       <KeyboardAvoidingView 
-        behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.content}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.cardContainer}>
           {/* Efeito de Vidro (Glassmorphism) para Web e iOS */}
           <View style={styles.glassCard}>
@@ -149,6 +156,7 @@ export default function LoginScreen() {
             </View>
           </View>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );

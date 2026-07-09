@@ -60,36 +60,39 @@
 
 ## 🔄 Últimas Mudanças (Sessão Atual)
 
-### FASE 1 — Unificação Bancária ✅
-- ⬆️ **Migration `00015_unify_bank_accounts.sql`** — criada para unificar `public.bank_accounts` e `financial.bank_accounts` com:
-  - Schema `app.config` para armazenamento seguro de chave de criptografia (pgcrypto)
-  - Proteção RLS rigorosa na chave (`FOR ALL USING (false)`)
-  - Triggers de sync bidirecional entre `public` e `financial`
-  - Criptografia automática de `client_id`/`client_secret` via `pgp_sym_encrypt`
-  - VIEW `financial.vw_accounts_full` segura (expõe apenas `has_credentials`, NUNCA valores decriptados)
-  - Melhorias em `financial.bank_statements`: `pluggy_id`, `belvo_id`, `source`, `category_ai`, `matched_invoice_id`
-- ⬆️ **Edge Function `sync-bank-statements`** — refatorada: remove dados mock, usa `financial.bank_accounts` via service_role
-
-### FASE 0 — Segurança Urgente 🔴
-- 🔒 **CORS restrito** em `financial-service` e `crm-service` (whitelist: localhost:8081, localhost:3000, app.meiflow.com.br)
-- 🔒 **Log seguro** no CRM Service — email mascarado no log, senha temporária não exposta em produção
-- 🔒 **CSP atualizado** no `shared/middleware.py` — inclui Supabase, Pluggy, Asaas
-- 🔒 **`temporary_password`** protegido por flag de ambiente (`ENV=production` → oculto)
-
-### 🧹 Cleanup Fallow (Código Morto)
-- **theme.ts**: removidos `LightPalette`, `LightColors`, `Spacing`, `Effects` (4 exports mortos)
-- **database/**: diretório WatermelonDB removido (schema.ts, index.ts, models/)
-- **charge.tsx**: extraído `ChargeResultScreen` (521 → ~200 linhas)
-- **Removidos**: `services/sync.ts`, `services/api.test.ts` (órfãos)
-- **Imports corrigidos**: `schedule.tsx`, `clients.tsx`, `assistant.tsx`, `fiscal.tsx`
+### FASE 4 — Correção de Bugs Silenciosos + Dead Code Cleanup 🔧
+- 🐛 **13 bugs corrigidos**:
+  - `fiscalStore.ts`: tabela `das_guides` → `das_records`
+  - `annual-declaration.tsx`: colunas/status inválidos (`revenue_services`, `revenue_commerce`, `receipt_number`, `enviada`)
+  - `api.ts getBalance`: passa a subtrair despesas do saldo (`despesa`/`expense`)
+  - `api.ts`: `Alert.alert()` adicionado em 3 catchs que retornavam `[]` silenciosamente
+  - `login.tsx`: `try/catch` envolvendo todo o fluxo + `setLoading(false)` no sucesso + `Alert` no profileError
+  - `emit.tsx` + `charge.tsx`: `parseFloat` com `isNaN()` check
+  - `reconciliation.tsx`: `processAction` não avança se `approved=true` e POST falhou
+  - `pos.tsx`: rollback — se `sales_order_items` falha, deleta a `sales_orders` criada
+  - `charge.tsx`: rollback — se `transactions` falha no cash, deleta a `charges` criada
+  - `ChargeResultScreen`: rollback — se `transactions` falha no webhook, reverte `charges.status` para `pending`
+  - `assistant.tsx`: race condition resolvida com `messagesRef` (useRef)
+  - `fiscal.tsx`: card PRÓXIMO DAS com dados reais (antes mock "20 MAI / Vence em 8 dias")
+  - `clients.tsx`: regex frágil de endereço → split robusto
+- 🧹 **Rota `/settings` resolvida**: `settings/_layout.tsx` removido, sub-pages movidas para `(tabs)/settings/`
+- **Dead code (fallow 0% files / 0% exports)**:
+  - 11 arquivos removidos (KeyboardSafeView, useColorScheme, useClientOnlyValue, Themed, EditScreenInfo, StyledText, Colors.ts, tests, scratch, supabase types)
+  - 5 exports não utilizados limpos (`DarkPalette`, `DarkColors`, `api`, `legalService`, `useThemeColor`)
+  - 2 tipos não utilizados limpos (`DAS`, `Invoice`)
+  - 2 props não utilizadas limpas (`index` em `DasCard`, `AppointmentCard`)
+- **Teclado**: `KeyboardAvoidingView` padronizado com `behavior='padding'` + `keyboardVerticalOffset` + `ScrollView` + `keyboardShouldPersistTaps="handled"` em 12 telas
+- **OTA Update**: `expo-updates` ativado — notificação "Atualização Disponível" ao abrir o app
+- **Deploy**: 4 `eas update` enviados para `production`
+- **Commits**: `80f7a54`, `6fe20cf`, `c62081d`, `a2c5601`
 
 ### 📊 Métricas de Qualidade (pós-cleanup)
 | Métrica | Antes | Depois | Meta |
 |---------|-------|--------|------|
-| Dead Files | 20,3% | **14,3%** ✅ | <15% |
-| Dead Exports | 13,1% | **7,6%** 🟡 | <5% |
-| Maintainability | 90,0 | **90,9** ✅ | >90 |
-| Duplicação | 11,3% | 11,6% | Estável |
+| Dead Files | 20,3% | **0%** ✅ | <15% |
+| Dead Exports | 13,1% | **0%** ✅ | <5% |
+| Maintainability | 90,0 | **93.1** ✅ | >90 |
+| Duplicação | 11,3% | 11,4% | Estável |
 
 ---
 
