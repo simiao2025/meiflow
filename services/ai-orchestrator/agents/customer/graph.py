@@ -1,10 +1,10 @@
 from typing import Annotated, List, TypedDict
 
-from langchain_core.messages import BaseMessage, SystemMessage, ToolMessage
+from langchain_core.messages import BaseMessage, SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
 
 from app.llm_factory import LLMFactory
 from tools.crm_tools import CUSTOMER_TOOLS
@@ -25,7 +25,7 @@ def create_customer_graph():
 
     async def call_model(state: CustomerState):
         messages = state['messages']
-        
+
         # Injeta o prompt apenas se não existir
         if not any(isinstance(m, SystemMessage) for m in messages):
             system_prompt = SystemMessage(content=(
@@ -50,7 +50,7 @@ def create_customer_graph():
     def should_continue(state: CustomerState):
         messages = state['messages']
         last_message = messages[-1]
-        
+
         # Se a IA decidiu chamar uma tool
         if last_message.tool_calls:
             return "tools"
@@ -58,10 +58,10 @@ def create_customer_graph():
 
     # Construindo o Grafo
     workflow = StateGraph(CustomerState)
-    
+
     workflow.add_node("agent", call_model)
     workflow.add_node("tools", ToolNode(CUSTOMER_TOOLS))
-    
+
     workflow.add_edge(START, "agent")
     workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
     workflow.add_edge("tools", "agent")

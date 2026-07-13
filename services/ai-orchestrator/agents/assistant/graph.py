@@ -1,10 +1,10 @@
 from typing import Annotated, List, TypedDict
 
 from langchain_core.messages import BaseMessage, SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
 
 from app.llm_factory import LLMFactory
 from tools.crm_tools import CUSTOMER_TOOLS
@@ -77,10 +77,10 @@ def create_assistant_graph():
 
     # Define o Grafo
     workflow = StateGraph(AgentState)
-    
+
     workflow.add_node("agent", call_model)
     workflow.add_node("tools", ToolNode(ALL_TOOLS))
-    
+
     workflow.add_edge(START, "agent")
     workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
     workflow.add_edge("tools", "agent")
