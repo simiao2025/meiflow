@@ -1,5 +1,5 @@
 import { Typography, Palette, useThemeColors } from '../../constants/theme';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -10,67 +10,30 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
-  TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { financialService } from '../../services/api';
 import { supabase } from '../../services/supabase';
+import { useFinancialData } from '../../hooks/useFinancialData';
+import { SummaryRow } from '../../components/finance/SummaryRow';
+import { TransactionItem } from '../../components/finance/TransactionItem';
+import { NewTransactionModal } from '../../components/finance/NewTransactionModal';
 
 const { width } = Dimensions.get('window');
-
-const CATEGORIES_RECEITA = ['Serviço Prestado', 'Venda de Produto', 'Comissão', 'Reembolso', 'Outros'];
-const CATEGORIES_DESPESA = ['Aluguel', 'Internet/Telefone', 'Material', 'Transporte', 'Alimentação', 'Impostos', 'Marketing', 'Software', 'Outros'];
 
 export default function FinancialHub() {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
   const router = useRouter();
+  
+  const { transactions, balance, loading, userId, fetchData } = useFinancialData();
+
   const [filter, setFilter] = useState<'tudo' | 'receita' | 'despesa' | 'agendados'>('tudo');
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [balance, setBalance] = useState(0);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Modal states
   const [modalVisible, setModalVisible] = useState(false);
-  const [txType, setTxType] = useState<'receita' | 'despesa'>('receita');
-  const [txAmount, setTxAmount] = useState('');
-  const [txDescription, setTxDescription] = useState('');
-  const [txCategory, setTxCategory] = useState('');
-  const [txPaymentMethod, setTxPaymentMethod] = useState('PIX');
-  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Detail modal
   const [detailItem, setDetailItem] = useState<any>(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        const trans = await financialService.getTransactions(user.id);
-        const { balance: bal } = await financialService.getBalance(user.id);
-        setTransactions(trans);
-        setBalance(bal);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredTransactions = transactions.filter(t => {
     if (filter === 'tudo') return true;
@@ -82,41 +45,6 @@ export default function FinancialHub() {
 
   const totalReceitas = transactions.filter(t => t.type === 'receita').reduce((s, t) => s + Number(t.amount || 0), 0);
   const totalDespesas = transactions.filter(t => t.type === 'despesa').reduce((s, t) => s + Number(t.amount || 0), 0);
-
-  const handleSaveTransaction = async () => {
-    if (!userId) return;
-    if (!txAmount.trim()) {
-      Alert.alert('Atenção', 'Informe o valor da transação.');
-      return;
-    }
-
-    const parsedAmount = parseFloat(txAmount.replace(',', '.'));
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Atenção', 'Digite um valor válido.');
-      return;
-    }
-
-    setIsSaving(true);
-    const { error } = await supabase.from('transactions').insert({
-      user_id: userId,
-      type: txType,
-      amount: txType === 'receita' ? parsedAmount : -parsedAmount,
-      description: txDescription || (txType === 'receita' ? 'Receita' : 'Despesa'),
-      category: txCategory || 'Outros',
-      payment_method: txPaymentMethod,
-      date: txDate,
-    });
-
-    if (error) {
-      console.error(error);
-      Alert.alert('Erro', 'Não foi possível salvar a transação.');
-    } else {
-      setModalVisible(false);
-      resetForm();
-      fetchData();
-    }
-    setIsSaving(false);
-  };
 
   const handleDeleteTransaction = async (id: string) => {
     Alert.alert('Excluir transação', 'Tem certeza que deseja excluir esta transação?', [
@@ -135,15 +63,6 @@ export default function FinancialHub() {
     ]);
   };
 
-  const resetForm = () => {
-    setTxAmount('');
-    setTxDescription('');
-    setTxCategory('');
-    setTxPaymentMethod('PIX');
-    setTxType('receita');
-    setTxDate(new Date().toISOString().split('T')[0]);
-  };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -154,19 +73,8 @@ export default function FinancialHub() {
         </TouchableOpacity>
       </View>
 
-      {/* Resumo Financeiro */}
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, { borderColor: 'rgba(16,185,129,0.2)' }]}>  
-          <Ionicons name="arrow-up" size={18} color="#10B981" />
-          <Text style={styles.summaryCardLabel}>Receitas</Text>
-          <Text style={[styles.summaryCardValue, { color: '#10B981' }]}>R$ {totalReceitas.toFixed(2).replace('.', ',')}</Text>
-        </View>
-        <View style={[styles.summaryCard, { borderColor: 'rgba(239,68,68,0.2)' }]}>
-          <Ionicons name="arrow-down" size={18} color="#EF4444" />
-          <Text style={styles.summaryCardLabel}>Despesas</Text>
-          <Text style={[styles.summaryCardValue, { color: '#EF4444' }]}>R$ {Math.abs(totalDespesas).toFixed(2).replace('.', ',')}</Text>
-        </View>
-      </View>
+      <SummaryRow receitas={totalReceitas} despesas={totalDespesas} />
+
 
       {/* Filtros */}
       <View style={styles.filterSection}>
@@ -199,22 +107,7 @@ export default function FinancialHub() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.transactionItem} activeOpacity={0.8} onPress={() => setDetailItem(item)}>
-              <View style={[styles.typeIndicator, { backgroundColor: item.type === 'receita' ? '#10B98120' : '#EF444420' }]}>
-                <Ionicons 
-                  name={item.type === 'receita' ? 'arrow-up' : 'arrow-down'} 
-                  size={20} 
-                  color={item.type === 'receita' ? '#10B981' : '#EF4444'} 
-                />
-              </View>
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionTitle}>{item.description || item.category || "Transação"}</Text>
-                <Text style={styles.transactionCategory}>{item.category || 'Sem categoria'} • {new Date(item.created_at).toLocaleDateString()}</Text>
-              </View>
-              <Text style={[styles.transactionAmount, { color: item.type === 'receita' ? '#10B981' : '#EF4444' }]}>
-                {item.type === 'receita' ? '+' : '-'} R$ {Math.abs(Number(item.amount || 0)).toFixed(2).replace('.', ',')}
-              </Text>
-            </TouchableOpacity>
+            <TransactionItem item={item} onPress={() => setDetailItem(item)} />
           )}
           ListHeaderComponent={() => (
             <View style={styles.summaryBox}>
@@ -231,101 +124,18 @@ export default function FinancialHub() {
         />
       )}
 
-      {/* FAB */}
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <LinearGradient colors={[Colors.primary, Palette.gold[600]]} style={styles.fabGradient}>
           <Ionicons name="add" size={32} color="#FFFFFF" />
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Modal Nova Transação */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-          <KeyboardAvoidingView
-            style={{ flex: 1, justifyContent: 'flex-end' }}
-            behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
-          >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nova Transação</Text>
-              <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-              {/* Tipo */}
-              <View style={styles.typeSelector}>
-                <TouchableOpacity 
-                  style={[styles.typeBtn, txType === 'receita' && { backgroundColor: 'rgba(16,185,129,0.15)' }]}
-                  onPress={() => { setTxType('receita'); setTxCategory(''); }}
-                >
-                  <Ionicons name="arrow-up" size={16} color={txType === 'receita' ? '#10B981' : Colors.textMuted} />
-                  <Text style={[styles.typeBtnText, txType === 'receita' && { color: '#10B981' }]}>Receita</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.typeBtn, txType === 'despesa' && { backgroundColor: 'rgba(239,68,68,0.15)' }]}
-                  onPress={() => { setTxType('despesa'); setTxCategory(''); }}
-                >
-                  <Ionicons name="arrow-down" size={16} color={txType === 'despesa' ? '#EF4444' : Colors.textMuted} />
-                  <Text style={[styles.typeBtnText, txType === 'despesa' && { color: '#EF4444' }]}>Despesa</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Valor */}
-              <Text style={styles.inputLabel}>Valor (R$) *</Text>
-              <TextInput style={styles.input} placeholder="0,00" placeholderTextColor="#475569" keyboardType="numeric" value={txAmount} onChangeText={setTxAmount} />
-
-              {/* Descrição */}
-              <Text style={styles.inputLabel}>Descrição</Text>
-              <TextInput style={styles.input} placeholder="Ex: Pagamento do cliente João" placeholderTextColor="#475569" value={txDescription} onChangeText={setTxDescription} />
-
-              {/* Categoria */}
-              <Text style={styles.inputLabel}>Categoria</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                {(txType === 'receita' ? CATEGORIES_RECEITA : CATEGORIES_DESPESA).map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.catChip, txCategory === cat && styles.catChipActive]}
-                    onPress={() => setTxCategory(cat)}
-                  >
-                    <Text style={[styles.catChipText, txCategory === cat && styles.catChipTextActive]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Forma de pagamento */}
-              <Text style={styles.inputLabel}>Forma de Pagamento</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                {['PIX', 'Dinheiro', 'Cartão', 'Boleto', 'Transferência'].map(pm => (
-                  <TouchableOpacity
-                    key={pm}
-                    style={[styles.catChip, txPaymentMethod === pm && styles.catChipActive]}
-                    onPress={() => setTxPaymentMethod(pm)}
-                  >
-                    <Text style={[styles.catChipText, txPaymentMethod === pm && styles.catChipTextActive]}>{pm}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Data */}
-              <Text style={styles.inputLabel}>Data (AAAA-MM-DD)</Text>
-              <TextInput style={styles.input} placeholder="2026-05-30" placeholderTextColor="#475569" value={txDate} onChangeText={setTxDate} />
-
-              {/* Salvar */}
-              <TouchableOpacity style={[styles.saveBtn, isSaving && { opacity: 0.7 }]} onPress={handleSaveTransaction} disabled={isSaving}>
-                <LinearGradient colors={txType === 'receita' ? ['#10B981', '#059669'] : ['#EF4444', '#DC2626']} style={styles.saveBtnGrad}>
-                  {isSaving ? <ActivityIndicator color="#FFF" /> : (
-                    <Text style={styles.saveBtnText}>Registrar {txType === 'receita' ? 'Receita' : 'Despesa'}</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+      <NewTransactionModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={() => { setModalVisible(false); fetchData(); }}
+        userId={userId || ''}
+      />
 
       {/* Modal Detalhe da Transação */}
       <Modal visible={!!detailItem} transparent animationType="fade">

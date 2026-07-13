@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,12 @@ interface Props {
 export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
   const router = useRouter();
   const { user } = useAuthStore();
+
+  useEffect(() => {
+    return () => {
+      Clipboard.setString('');
+    };
+  }, []);
 
   const handleCopyPix = () => {
     if (chargeResult?.qr_code_payload) {
@@ -96,7 +102,7 @@ export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
 
         <View style={styles.resultCard}>
           <Text style={styles.resultLabel}>Valor</Text>
-          <Text style={styles.resultValue}>R$ {parseFloat(String(chargeResult.amount)).toFixed(2)}</Text>
+          <Text style={styles.resultValue}>R$ {parseFloat(String(chargeResult.amount)).toFixed(2).replace('.', ',')}</Text>
         </View>
 
         <View style={styles.resultCard}>
@@ -154,7 +160,7 @@ export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
           <Text style={styles.doneText}>Voltar para Ajustes</Text>
         </TouchableOpacity>
 
-        {chargeResult.status !== 'paid' && (
+        {chargeResult.status !== 'paid' && __DEV__ && (
           <TouchableOpacity style={{ marginTop: 20 }} onPress={simulateWebhook}>
             <Text style={{ color: '#F59E0B', textAlign: 'center', textDecorationLine: 'underline' }}>
               [DEV] Simular Webhook de Pagamento

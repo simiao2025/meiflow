@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,51 +13,23 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, Href } from 'expo-router';
-import { supabase } from '../../services/supabase';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
+import { useCharge } from '../../hooks/useCharge';
 import ChargeResultScreen from '../../components/billing/ChargeResultScreen';
-
-const METHODS = [
-  { key: 'pix', label: 'PIX', icon: 'qr-code', color: '#10B981' },
-  { key: 'credit_card', label: 'Cartão', icon: 'card', color: '#8B5CF6' },
-  { key: 'cash', label: 'Dinheiro', icon: 'cash', color: '#F59E0B' },
-];
+import { PaymentMethodSelector } from '../../components/billing/PaymentMethodSelector';
+import { ClientSelector } from '../../components/billing/ClientSelector';
 
 export default function ChargeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { clients, isLoading, isSubmitting, createCharge } = useCharge();
 
-  const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('pix');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Resultado da cobrança
   const [chargeResult, setChargeResult] = useState<any>(null);
-
-  useEffect(() => {
-    if (user) loadClients();
-  }, [user]);
-
-  const loadClients = async () => {
-    try {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-      if (data) setClients(data);
-    } catch (e) {
-      console.error('Erro ao carregar clientes:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleCharge = async () => {
     if (!selectedClient) {
@@ -70,86 +42,21 @@ export default function ChargeScreen() {
       return;
     }
 
-    if ((selectedMethod === 'pix' || selectedMethod === 'credit_card') && !user?.user_metadata?.asaas_api_key) {
-      // Como o profile ainda não injetou direto no user aqui, fazemos uma verificação leve
-      // Idealmente consultaríamos o `profile.asaas_api_key` se importarmos o zustand completo
-    }
-
-    setIsSubmitting(true);
     try {
-      if (!user?.id) {
-        Alert.alert('Erro', 'Usuário não autenticado.');
-        return;
-      }
+      const result = await createCharge(selectedClient, numericAmount, selectedMethod, description);
 
-      // Dinheiro: salva direto via Supabase (não precisa de gateway)
       if (selectedMethod === 'cash') {
-        const { error: chargeError } = await supabase.from('charges').insert({
-          user_id: user.id,
-          client_id: selectedClient,
-          amount: numericAmount,
-          payment_method: 'cash',
-          status: 'paid',
-          description,
-        });
-
-        if (chargeError) throw chargeError;
-
-        // Também registra como receita no caixa financeiro
-        const { error: txError } = await supabase.from('transactions').insert({
-          user_id: user.id,
-          type: 'receita',
-          amount: numericAmount,
-          category: 'Pagamento em Dinheiro',
-          description,
-          payment_method: 'dinheiro',
-          client_id: selectedClient,
-        });
-
-        if (txError) {
-          await supabase.from('charges').delete().eq('id', chargeError as any);
-          throw txError;
-        }
-
-        Alert.alert('Registrado!', `R$ ${numericAmount.toFixed(2)} em dinheiro adicionado ao seu caixa.`, [
+        Alert.alert('Registrado!', `R$ ${numericAmount.toFixed(2).replace('.', ',')} em dinheiro adicionado ao seu caixa.`, [
           { text: 'OK', onPress: () => router.back() },
         ]);
-        return;
+      } else if (result) {
+        setChargeResult(result);
       }
-
-      // PIX ou Cartão: Chama o Gateway Mock (via inserção direta no banco para o MVP)
-      const { data: chargeData, error } = await supabase
-        .from('charges')
-        .insert({
-user_id: user!.id,
-           client_id: selectedClient,
-           amount: numericAmount,
-           payment_method: selectedMethod,
-           status: 'pending',
-           description,
-          // Em produção real, esses campos viriam da resposta da API do Asaas
-          external_reference: `pay_${Date.now()}`,
-          payment_link: `https://sandbox.asaas.com/c/pay_${Date.now()}`,
-          qr_code_payload: selectedMethod === 'pix'
-            ? `00020126330014BR.GOV.BCB.PIX0111${Date.now()}5204000053039865802BR5913MEIFlow6014BRASIL62070503***6304ABCD`
-            : null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setChargeResult(chargeData);
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Falha ao gerar cobrança.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-
-
-  // ===== TELA DE RESULTADO (após gerar cobrança) =====
   if (chargeResult) {
     return (
       <ChargeResultScreen
@@ -159,7 +66,6 @@ user_id: user!.id,
     );
   }
 
-  // ===== TELA PRINCIPAL (formulário) =====
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -179,63 +85,12 @@ user_id: user!.id,
         >
         <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-          {/* Método de Pagamento */}
           <Text style={styles.label}>Forma de Pagamento</Text>
-          <View style={styles.methodRow}>
-            {METHODS.map((m) => (
-              <TouchableOpacity
-                key={m.key}
-                style={[
-                  styles.methodCard,
-                  selectedMethod === m.key && { borderColor: m.color, backgroundColor: `${m.color}15` },
-                ]}
-                onPress={() => setSelectedMethod(m.key)}
-              >
-                <Ionicons
-                  name={m.icon as any}
-                  size={28}
-                  color={selectedMethod === m.key ? m.color : '#64748B'}
-                />
-                <Text
-                  style={[
-                    styles.methodLabel,
-                    selectedMethod === m.key && { color: m.color },
-                  ]}
-                >
-                  {m.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <PaymentMethodSelector selected={selectedMethod} onSelect={setSelectedMethod} />
 
-          {/* Cliente */}
           <Text style={styles.label}>Cliente</Text>
-          <View style={styles.dropdownContainer}>
-            {clients.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyText}>Nenhum cliente cadastrado.</Text>
-                <TouchableOpacity 
-                  style={styles.addClientShortcut}
-                  onPress={() => router.push('/(tabs)/clients')}
-                >
-                  <Ionicons name="person-add-outline" size={16} color="#38BDF8" />
-                  <Text style={styles.addClientText}>Cadastrar Cliente Rápido</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              clients.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.dropdownItem, selectedClient === c.id && styles.dropdownItemActive]}
-                  onPress={() => setSelectedClient(c.id)}
-                >
-                  <Text style={styles.dropdownText}>{c.name}</Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
+          <ClientSelector clients={clients} selected={selectedClient} onSelect={setSelectedClient} />
 
-          {/* Valor */}
           <Text style={styles.label}>Valor (R$)</Text>
           <TextInput
             style={styles.input}
@@ -246,7 +101,6 @@ user_id: user!.id,
             onChangeText={setAmount}
           />
 
-          {/* Descrição */}
           <Text style={styles.label}>Descrição (opcional)</Text>
           <TextInput
             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
@@ -257,7 +111,6 @@ user_id: user!.id,
             onChangeText={setDescription}
           />
 
-          {/* Botão de Ação */}
           <TouchableOpacity
             style={[styles.submitButton, isSubmitting && { opacity: 0.6 }]}
             onPress={handleCharge}

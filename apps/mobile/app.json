@@ -14,7 +14,15 @@
       "backgroundColor": "#050505"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.simacjr.meiflowapp",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "O MEIFlow usa seu microfone para enviar mensagens de voz ao assistente de IA.",
+        "NSPhotoLibraryUsageDescription": "O MEIFlow acessa sua galeria para definir o logotipo da empresa.",
+        "NSLocationWhenInUseUsageDescription": "O MEIFlow usa sua localização para navegar até clientes.",
+        "NSFaceIDUsageDescription": "O MEIFlow usa Face ID para desbloquear o app com segurança."
+      }
     },
     "android": {
       "adaptiveIcon": {

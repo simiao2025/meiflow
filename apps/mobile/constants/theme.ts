@@ -41,7 +41,7 @@ const DarkColors = {
   
   text: '#F8FAFC',
   textSecondary: '#A1A1AA',
-  textMuted: '#52525B',
+  textMuted: '#71717A',
   
   border: DarkPalette.border,
   borderStrong: DarkPalette.borderStrong,

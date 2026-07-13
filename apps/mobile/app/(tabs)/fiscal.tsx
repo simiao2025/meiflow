@@ -101,6 +101,11 @@ export default function FiscalScreen() {
           {loading ? <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} /> : (
             dasRecords.map((das, index) => <DasCard key={das.id} das={das} index={index} />)
           )}
+
+          <Text style={styles.disclaimer}>
+            Aviso: O MEIFlow não substitui a orientação de um contador habilitado.
+            Valores, prazos e documentos devem ser verificados antes do pagamento ou transmissão.
+          </Text>
         </ScrollView>
       </Animated.View>
     </View>
@@ -189,4 +194,5 @@ const styles = StyleSheet.create({
   dasStatus: { fontSize: 9, fontFamily: Typography.fonts.display, marginTop: 4, letterSpacing: 1 },
   pdfBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(212,175,55,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   pdfBtnText: { color: Colors.primary, fontSize: 10, fontFamily: Typography.fonts.display },
+  disclaimer: { color: Colors.textMuted, fontSize: 11, fontFamily: Typography.fonts.medium, textAlign: 'center', marginTop: 24, paddingHorizontal: 24, lineHeight: 16, fontStyle: 'italic' },
 });

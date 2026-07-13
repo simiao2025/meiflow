@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade — MEIFlow</title>
+  <style>
+    :root { --gold: #EAB308; --bg: #050505; --card: #121212; --text: #F8FAFC; --muted: #94A3B8; --border: rgba(255,255,255,0.08); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
+    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+    h1 span { color: var(--gold); }
+    .updated { color: var(--muted); font-size: 0.875rem; margin-bottom: 40px; display: block; }
+    h2 { font-size: 1.25rem; font-weight: 700; margin-top: 32px; margin-bottom: 12px; color: var(--gold); }
+    h3 { font-size: 1rem; font-weight: 600; margin-top: 20px; margin-bottom: 8px; }
+    p, li { color: var(--muted); font-size: 0.95rem; margin-bottom: 12px; }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 8px; }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin: 20px 0; }
+    strong { color: var(--text); }
+    .highlight { background: rgba(234,179,8,0.1); border-left: 3px solid var(--gold); padding: 16px 20px; border-radius: 0 12px 12px 0; margin: 16px 0; }
+    .highlight p { color: var(--text); margin: 0; font-size: 0.9rem; }
+    footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; color: #475569; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Política de <span>Privacidade</span></h1>
+    <span class="updated">Última atualização: 13 de julho de 2026</span>
+
+    <div class="card">
+      <p><strong>MEIFlow</strong> ("Aplicativo") é um aplicativo móvel desenvolvido para gestão financeira, fiscal e administrativa do Microempreendedor Individual (MEI). Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informações pessoais, em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)</strong>.</p>
+    </div>
+
+    <h2>1. Controlador dos Dados</h2>
+    <p>O controlador responsável pelo tratamento dos seus dados pessoais é:</p>
+    <div class="card">
+      <p><strong>MEIFlow — Gestão para MEI</strong><br>
+      CNPJ: [INSERIR CNPJ DA EMPRESA]<br>
+      E-mail: privacidade@meiflow.com.br<br>
+      Endereço: [INSERIR ENDEREÇO COMPLETO]</p>
+    </div>
+
+    <h2>2. Dados Pessoais Coletados</h2>
+    <p>Coletamos os seguintes dados pessoais durante o uso do Aplicativo:</p>
+
+    <h3>2.1 Dados de Cadastro</h3>
+    <ul>
+      <li><strong>Nome completo</strong> — necessário para identificação fiscal</li>
+      <li><strong>E-mail</strong> — utilizado para autenticação e comunicações</li>
+      <li><strong>Senha</strong> — armazenada de forma hasheada (bcrypt) pelo Supabase Auth</li>
+    </ul>
+
+    <h3>2.2 Dados Empresariais (MEI)</h3>
+    <ul>
+      <li><strong>CPF</strong> — documento fiscal do titular (dado sensível)</li>
+      <li><strong>CNPJ</strong> — registro empresarial do MEI (dado sensível)</li>
+      <li><strong>Razão Social e Nome Fantasia</strong> — identificação da empresa</li>
+      <li><strong>CNAE / Atividade</strong> — ramo de atividade</li>
+      <li><strong>Endereço</strong> — CEP, logradouro, cidade e UF</li>
+    </ul>
+
+    <h3>2.3 Dados Financeiros</h3>
+    <ul>
+      <li><strong>Saldo e transações bancárias</strong> — sincronizados via Open Finance (Pluggy) com consentimento explícito</li>
+      <li><strong>Dados de cobranças</strong> — PIX, cartão e dinheiro processados via Asaas</li>
+      <li><strong>Registros fiscais</strong> — DAS, NFS-e e DASN-SIMEI</li>
+    </ul>
+
+    <h3>2.4 Dados de Terceiros (Seus Clientes)</h3>
+    <ul>
+      <li><strong>Nome, e-mail, telefone e WhatsApp</strong> dos seus clientes cadastrados no CRM</li>
+      <li><strong>CPF/CNPJ</strong> dos seus clientes</li>
+      <li><strong>Geolocalização</strong> dos endereços dos clientes (quando fornecida)</li>
+    </ul>
+
+    <h3>2.5 Dados de Uso</h3>
+    <ul>
+      <li><strong>Conversas com assistente de IA</strong> — mensagens de texto e áudio enviadas ao chat</li>
+      <li><strong>Notificações push</strong> — token do dispositivo para envio de notificações</li>
+    </ul>
+
+    <h2>3. Base Legal para o Tratamento</h2>
+    <p>O tratamento dos seus dados é realizado com base em:</p>
+    <ul>
+      <li><strong>Consentimento</strong> (Art. 7°, I da LGPD) — coleta de dados bancários via Open Finance, dados de clientes, uso do assistente de IA</li>
+      <li><strong>Execução de contrato</strong> (Art. 7°, V) — prestação do serviço de gestão MEI</li>
+      <li><strong>Legítimo interesse</strong> (Art. 7°, IX) — melhoria do serviço e prevenção de fraudes</li>
+      <li><strong>Obrigação legal</strong> (Art. 7°, II) — retenção de registros fiscais por 5 anos (CTN Art. 174)</li>
+    </ul>
+
+    <h2>4. Finalidade do Tratamento</h2>
+    <div class="highlight">
+      <p>Cada dado coletado possui uma finalidade específica e documentada:</p>
+    </div>
+    <ul>
+      <li><strong>CPF/CNPJ</strong> → Emissão de NFS-e, DAS e DASN-SIMEI, validação junto à Receita Federal</li>
+      <li><strong>Nome e razão social</strong> → Identificação em documentos fiscais e notas</li>
+      <li><strong>Endereço</strong> → Localização para obrigações municipais e geolocalização de clientes</li>
+      <li><strong>Dados bancários</strong> → Conciliação financeira automática e emissão de cobranças</li>
+      <li><strong>Dados de clientes do MEI</strong> → Gestão de relacionamento e emissão de cobranças em seu nome</li>
+      <li><strong>Conversas com IA</strong> → Processamento de comandos e geração de respostas financeiras</li>
+      <li><strong>Áudios</strong> → Transcrição via Whisper (OpenAI) para processamento por IA</li>
+    </ul>
+
+    <h2>5. Compartilhamento com Terceiros</h2>
+    <p>Seus dados podem ser compartilhados com os seguintes serviços para fins específicos:</p>
+    <ul>
+      <li><strong>Supabase</strong> — hospedagem do banco de dados e autenticação (dados em repouso criptografados)</li>
+      <li><strong>Asaas</strong> — processamento de pagamentos (PIX, cartão, boleto) — dados compartilhados: nome do cliente, valor, método de pagamento</li>
+      <li><strong>Pluggy (Open Finance)</strong> — sincronização bancária autorizada pelo Banco Central — dados compartilhados: token de acesso bancário</li>
+      <li><strong>Evolution Go</strong> — integração com WhatsApp para atendimento automatizado — dados compartilhados: CNPJ, número de telefone</li>
+      <li><strong>OpenAI</strong> — processamento de áudio (Whisper) e respostas do assistente de IA</li>
+      <li><strong>Render</strong> — hospedagem do backend (ai-orchestrator)</li>
+    </ul>
+    <p><strong>Nenhum dado é vendido a terceiros.</strong></p>
+
+    <h2>6. Armazenamento e Segurança</h2>
+    <ul>
+      <li><strong>Dados bancários</strong> — criptografados com pgcrypto (AES-256) no banco PostgreSQL</li>
+      <li><strong>CPF/CNPJ</strong> — armazenados em texto no banco, protegidos por RLS (Row Level Security)</li>
+      <li><strong>Sessão do usuário</strong> — tokens JWT armazenados no Keychain/Keystore do dispositivo (expo-secure-store)</li>
+      <li><strong>Conversas com IA</strong> — criptografadas localmente no dispositivo via expo-secure-store</li>
+      <li><strong>Transmissão</strong> — todas as comunicação são criptografadas via TLS 1.3 (HTTPS)</li>
+      <li><strong>Política de retenção fiscal</strong> — registros fiscais são mantidos por no mínimo 5 anos conforme legislação tributária</li>
+    </ul>
+
+    <h2>7. Seus Direitos (Art. 18 da LGPD)</h2>
+    <p>Conforme a LGPD, você tem direito a:</p>
+    <ul>
+      <li><strong>Confirmação</strong> — saber se seus dados estão sendo tratados</li>
+      <li><strong>Acesso</strong> — obter uma cópia dos seus dados pessoais</li>
+      <li><strong>Correção</strong> — corrigir dados incompletos ou desatualizados</li>
+      <li><strong>Anonimização, bloqueio ou eliminação</strong> — solicitar a exclusão dos seus dados</li>
+      <li><strong>Portabilidade</strong> — receber seus dados em formato estruturado (JSON/CSV)</li>
+      <li><strong>Revogação do consentimento</strong> — a qualquer momento, sem ônus</li>
+      <li><strong>Oposição</strong> — ao tratamento baseado em legítimo interesse</li>
+    </ul>
+
+    <div class="highlight">
+      <p><strong>Para exercer seus direitos:</strong> Acesse as configurações do aplicativo → "Excluir Minha Conta", ou entre em contato pelo e-mail <a href="mailto:privacidade@meiflow.com.br">privacidade@meiflow.com.br</a>.</p>
+    </div>
+
+    <h2>8. Encarregado de Dados (DPO)</h2>
+    <p>O encarregado pelo tratamento de dados pessoais pode ser contatado em:</p>
+    <div class="card">
+      <p><strong>E-mail:</strong> dpo@meiflow.com.br<br>
+      <strong>Nome:</strong> [INSERIR NOME DO ENCARREGADO]</p>
+    </div>
+
+    <h2>9. Transferência Internacional de Dados</h2>
+    <p>Alguns dos nossos provedores de serviço estão localizados fora do Brasil. Quando isso ocorre, garantimos que a transferência é realizada em conformidade com o Art. 33 da LGPD, mediante:</p>
+    <ul>
+      <li>Clausulas contratuais de proteção de dados</li>
+      <li>Standard Contractual Clauses (SCCs) quando aplicável</li>
+      <li>Certificação de adequação do país de destino</li>
+    </ul>
+
+    <h2>10. Menores de Idade</h2>
+    <p>O Aplicativo é destinado a microempreendedores individuais (MEI), que necessariamente possuem pelo menos 18 anos de idade. <strong>Não coletamos intencionalmente dados de menores de 18 anos.</strong></p>
+
+    <h2>11. Cookies e Rastreamento</h2>
+    <p>O Aplicativo móvel não utiliza cookies. Quando você acessa links externos pelo navegador integrado (InApp Browser), cookies podem ser utilizados pelos sites visitados.</p>
+
+    <h2>12. Alterações nesta Política</h2>
+    <p>Esta Política de Privacidade pode ser atualizada periodicamente. Notificaremos sobre mudanças significativas através do aplicativo ou por e-mail. A data da última atualização está indicada no topo deste documento.</p>
+
+    <h2>13. Autoridade Nacional de Proteção de Dados (ANPD)</h2>
+    <p>Caso você considere que o tratamento dos seus dados viola a LGPD, pode registrar uma reclamação junto à ANPD:</p>
+    <p><a href="https://www.gov.br/anpd" target="_blank">https://www.gov.br/anpd</a></p>
+
+    <footer>
+      <p>© 2026 MEIFlow — Gestão para MEI. Todos os direitos reservados.</p>
+      <p>Documento em conformidade com a Lei nº 13.709/2018 (LGPD)</p>
+    </footer>
+  </div>
+</body>
+</html>

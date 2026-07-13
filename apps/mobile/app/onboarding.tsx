@@ -46,6 +46,27 @@ export default function OnboardingScreen() {
     }
   }, [profile]);
 
+  const handleFetchCNPJData = async () => {
+    if (!validateCNPJ(cnpj)) {
+      Alert.alert('CNPJ Inválido', 'Por favor, insira um CNPJ válido para buscar os dados.');
+      return;
+    }
+
+    setLoading(true);
+    // TODO: Integrar com a API do Backend
+    // Simulação de retorno da Receita Federal
+    setTimeout(() => {
+      setRazaoSocial('Exemplo LTDA ME');
+      setFantasyName('MEIFlow Demo');
+      setActivity('Serviços de Desenvolvimento de Software');
+      setCep(maskCEP('12345678'));
+      setStreet('Rua Exemplo, 123');
+      setCity('São Paulo');
+      setUf('SP');
+      setLoading(false);
+    }, 1000);
+  };
+
   const handleCompleteOnboarding = async () => {
     if (!fullName || !cnpj || !razaoSocial || !cpf || !cep) {
       Alert.alert('Quase lá!', 'Por favor, preencha os campos obrigatórios para continuar.');
@@ -88,15 +109,17 @@ export default function OnboardingScreen() {
     } else {
       try {
         // Dispara a criação da instância no Evolution Go via Backend
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
-        const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || 'meiflow_secret_2026_internal';
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+        if (!apiUrl) {
+          console.warn('EXPO_PUBLIC_API_URL not configured');
+          return;
+        }
         
         // Note: Roteamento passa pelo NGINX (API Gateway)
         await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Internal-Key': internalKey
           },
           body: JSON.stringify({
             user_id: user?.id,
@@ -143,7 +166,14 @@ export default function OnboardingScreen() {
 
               {/* Seção 2: Dados da Empresa */}
               <SectionTitle icon="business" title="Dados da Empresa" />
-              <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={(val: string) => setCnpj(maskCNPJ(val))} placeholder="00.000.000/0000-00" keyboard="number-pad" />
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <View style={{flex: 1}}>
+                  <InputField label="CNPJ" icon="business-outline" value={cnpj} onChange={(val: string) => setCnpj(maskCNPJ(val))} placeholder="00.000.000/0000-00" keyboard="number-pad" />
+                </View>
+                <TouchableOpacity style={{marginLeft: 8, marginTop: 24, backgroundColor: Colors.primaryMuted, padding: 16, borderRadius: 12}} onPress={handleFetchCNPJData}>
+                  <Ionicons name="search" size={20} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
               <InputField label="Razão Social" icon="document-text-outline" value={razaoSocial} onChange={setRazaoSocial} placeholder="Sua empresa MEI" />
               <InputField label="Nome Fantasia" icon="star-outline" value={fantasyName} onChange={setFantasyName} placeholder="Nome comercial (opcional)" />
               <InputField label="Ramo de Atividade / CNAE" icon="briefcase-outline" value={activity} onChange={setActivity} placeholder="Ex: Serviços de TI" />
@@ -172,6 +202,12 @@ export default function OnboardingScreen() {
                   <Text style={styles.buttonText}>Finalizar Cadastro</Text>
                 )}
               </TouchableOpacity>
+
+              <Text style={styles.lgpdNotice}>
+                Ao finalizar, você concorda com o tratamento dos seus dados pessoais
+                (CPF, CNPJ, endereço e dados financeiros) para fins de gestão fiscal
+                e financeira do seu MEI, conforme nossa Política de Privacidade e a LGPD.
+              </Text>
               
               <View style={{ height: 40 }} />
             </View>
@@ -290,5 +326,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
+  },
+  lgpdNotice: {
+    color: '#71717A',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
   },
 });

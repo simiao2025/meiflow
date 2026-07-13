@@ -433,7 +433,7 @@ async def kiwify_webhook(req: KiwifyWebhookRequest):
         # Log seguro: apenas confirma envio, sem expor senha
         logger.info(f"E-MAIL DE BOAS-VINDAS ENVIADO PARA {req.email[:3]}***@{'***'.join(req.email.split('@')[1:])}")
 
-        env = os.getenv("ENV", "development")
+        env = os.getenv("ENV", "production")
         
         result = {
             "status": "success",

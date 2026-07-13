@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: str = ""
 
     # Webhook Security
-    WEBHOOK_SECRET_TOKEN: str = "meiflow-webhook-2026"
+    WEBHOOK_SECRET_TOKEN: str = ""
     ASAAS_WEBHOOK_TOKEN: str = ""
 
     # Supabase

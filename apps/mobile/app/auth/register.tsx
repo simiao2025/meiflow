@@ -19,16 +19,25 @@ import { Colors, Palette } from '../../constants/theme';
 
 import * as Linking from 'expo-linking';
 
+const PRIVACY_POLICY_URL = 'https://meiflow.com.br/privacidade';
+const TERMS_OF_USE_URL = 'https://meiflow.com.br/termos';
+
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      Alert.alert('Consentimento Necessário', 'Você precisa aceitar os Termos de Uso e a Política de Privacidade para criar sua conta.');
       return;
     }
 
@@ -122,8 +131,31 @@ export default function RegisterScreen() {
               />
             </View>
 
+            <View style={styles.consentContainer}>
+              <TouchableOpacity 
+                style={styles.checkbox}
+                onPress={() => setAcceptedTerms(!acceptedTerms)}
+                accessibilityLabel={acceptedTerms ? 'Aceitar termos marcado' : 'Aceitar termos desmarcado'}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: acceptedTerms }}
+              >
+                {acceptedTerms ? (
+                  <Ionicons name="checkbox" size={22} color={Colors.primary} />
+                ) : (
+                  <Ionicons name="square-outline" size={22} color="#64748B" />
+                )}
+              </TouchableOpacity>
+              <Text style={styles.consentText}>
+                Li e aceito os{' '}
+                <Text style={styles.consentLink} onPress={() => Linking.openURL(TERMS_OF_USE_URL)}>Termos de Uso</Text>
+                {' '}e a{' '}
+                <Text style={styles.consentLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Política de Privacidade</Text>.
+                {'\n'}Autorizo o tratamento dos meus dados pessoais conforme a LGPD.
+              </Text>
+            </View>
+
             <TouchableOpacity 
-              style={styles.registerButton} 
+              style={[styles.registerButton, !acceptedTerms && { opacity: 0.5 }]} 
               onPress={handleRegister}
               disabled={loading}
             >
@@ -235,5 +267,26 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 15,
     fontWeight: '700',
+  },
+  consentContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 20,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  consentText: {
+    flex: 1,
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  consentLink: {
+    color: Colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

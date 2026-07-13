@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ActivityIndicator, Animated, ScrollView,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -11,11 +11,10 @@ import { Typography, Palette, useThemeColors } from '../../constants/theme';
 import { useAudioRecorder, useAudioPlayer } from 'expo-audio';
 import * as Audio from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
-
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
-const CHAT_FILE_URI = FileSystem.documentDirectory + 'meiflow_chat_history.json';
-const MAX_STORED_MESSAGES = 100;
+import { useAssistantChat } from '../../hooks/useAssistantChat';
+import { MessageBubble } from '../../components/chat/MessageBubble';
+import { QuickActions } from '../../components/chat/QuickActions';
+import { TypingIndicator } from '../../components/chat/TypingIndicator';
 
 const AI_MODELS = [
   { id: 'openai', label: 'GPT-4o', icon: 'logo-github' },
@@ -24,31 +23,22 @@ const AI_MODELS = [
   { id: 'groq', label: 'Llama 3 (Groq)', icon: 'speedometer' },
 ];
 
-const QUICK_ACTIONS = [
-  { label: '💰 Ver meu saldo', message: 'Qual é meu saldo atual?' },
-  { label: '📄 Emitir cobrança', message: 'Quero emitir uma cobrança para um cliente' },
-  { label: '📊 Resumo do mês', message: 'Me dê um resumo financeiro deste mês' },
-  { label: '📅 Próximos prazos', message: 'Quais são meus próximos prazos fiscais?' },
-];
-
 export default function AssistantScreen() {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
   const { user } = useAuthStore();
-  const [messages, setMessages] = useState<any[]>([]);
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
   const [inputText, setInputText] = useState('');
-  const [loading, setLoading] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState('openai');
   const [showModelPicker, setShowModelPicker] = useState(false);
-  const [failedMsgId, setFailedMsgId] = useState<string | null>(null);
   const [recordingUI, setRecordingUI] = useState(false);
-  
-  // Audio
-  const recorder = useAudioRecorder(Audio.RecordingPresets.HIGH_QUALITY);
   const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const { messages, loading, failedMsgId, sendMessage, retryLastMessage, clearChat } = useAssistantChat(selectedProvider);
+
+  const recorder = useAudioRecorder(Audio.RecordingPresets.HIGH_QUALITY);
   const player = useAudioPlayer('');
+  const flatListRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const subscription = player.addListener('playbackStatusUpdate', (status) => {
@@ -57,125 +47,16 @@ export default function AssistantScreen() {
     return () => subscription.remove();
   }, [player]);
 
-  const flatListRef = useRef<FlatList>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const typingAnim = useRef(new Animated.Value(0)).current;
-
-  // Load saved history
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-    loadChatHistory();
   }, []);
 
-  // Typing animation
-  useEffect(() => {
-    if (loading) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(typingAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.timing(typingAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
-        ])
-      ).start();
-    } else {
-      typingAnim.setValue(0);
-    }
-  }, [loading]);
-
-  const loadChatHistory = async () => {
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(CHAT_FILE_URI);
-      if (fileInfo.exists) {
-        const stored = await FileSystem.readAsStringAsync(CHAT_FILE_URI);
-        const parsed = JSON.parse(stored);
-        if (parsed.length > 0) {
-          setMessages(parsed);
-          return;
-        }
-      }
-    } catch (_) {}
-    // Default welcome message
-    setMessages([{ id: '1', role: 'assistant', content: 'Olá! Como posso ajudar sua empresa hoje? Posso emitir cobranças, agendar serviços ou consultar seu financeiro.' }]);
-  };
-
-  const saveChatHistory = async (msgs: any[]) => {
-    try {
-      const toStore = msgs.slice(-MAX_STORED_MESSAGES).map(m => ({
-        id: m.id, role: m.role, content: m.content,
-      }));
-      await FileSystem.writeAsStringAsync(CHAT_FILE_URI, JSON.stringify(toStore));
-    } catch (_) {}
-  };
-
-  const sendMessage = async (overrideText?: string) => {
-    const text = overrideText || inputText;
-    if (!text.trim() || loading) return;
-
-    const userMsg = { id: Date.now().toString(), role: 'user', content: text };
-    const currentMessages = messagesRef.current;
-    const newMessages = [...currentMessages, userMsg];
-    setMessages(newMessages);
-    saveChatHistory(newMessages);
+  const handleSendMessage = useCallback((text?: string) => {
+    const msg = text || inputText;
+    if (!msg.trim()) return;
+    sendMessage(msg);
     setInputText('');
-    setLoading(true);
-    setFailedMsgId(null);
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(`${apiUrl}/api/v1/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true' },
-        body: JSON.stringify({
-          message: text,
-          user_id: user?.id,
-          provider: selectedProvider
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      const data = await response.json();
-      const aiContent = data?.response || data?.message || 'Desculpe, não consegui processar sua solicitação. Tente novamente.';
-      const aiMsg = { id: (Date.now() + 1).toString(), role: 'assistant', content: aiContent };
-      const updated = [...newMessages, aiMsg];
-      setMessages(updated);
-      saveChatHistory(updated);
-    } catch (e) {
-      const errorMsg = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '⚠️ Não consegui conectar ao servidor. Verifique sua conexão e tente novamente.',
-        isError: true,
-      };
-      setFailedMsgId(userMsg.id);
-      const updated = [...newMessages, errorMsg];
-      setMessages(updated);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const retryLastMessage = () => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
-    if (!failedMsgId) return;
-    const failedMsg = messages.find(m => m.id === failedMsgId);
-    if (!failedMsg) return;
-    // Remove the error message and retry
-    const cleaned = messages.filter(m => !m.isError);
-    setMessages(cleaned);
-    setFailedMsgId(null);
-    sendMessage(failedMsg.content);
-  };
-
-  const clearChat = async () => {
-    const welcome = [{ id: '1', role: 'assistant', content: 'Conversa limpa! Como posso ajudar?' }];
-    setMessages(welcome);
-    try {
-      await FileSystem.deleteAsync(CHAT_FILE_URI, { idempotent: true });
-    } catch (_) {}
-  };
+  }, [inputText, sendMessage]);
 
   const startRecording = async () => {
     try {
@@ -185,7 +66,6 @@ export default function AssistantScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (err) {
-      console.log('Error recording', err);
       setRecordingUI(false);
     }
   };
@@ -193,12 +73,8 @@ export default function AssistantScreen() {
   const stopRecording = async () => {
     setRecordingUI(false);
     try {
-      if (recorder.isRecording) {
-        await recorder.stop();
-      }
-    } catch (err) {
-      console.log('Error stopping recording', err);
-    }
+      if (recorder.isRecording) await recorder.stop();
+    } catch (err) {}
     const uri = recorder.uri;
     if (uri) processAudio(uri);
   };
@@ -206,41 +82,23 @@ export default function AssistantScreen() {
   const cancelRecording = async () => {
     setRecordingUI(false);
     try {
-      if (recorder.isRecording) {
-        await recorder.stop();
-      }
-    } catch (err) {
-      console.log('Error cancelling recording', err);
-    }
+      if (recorder.isRecording) await recorder.stop();
+    } catch (err) {}
   };
 
   const processAudio = async (uri: string) => {
-    setLoading(true);
     try {
       const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' as any });
-      const response = await fetch(`${apiUrl}/api/v1/chat/audio`, {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/chat/audio`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true' },
+        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
         body: JSON.stringify({ audio_base64: base64Audio, user_id: user?.id, provider: selectedProvider }),
       });
       const data = await response.json();
+      // Add audio response to messages
       const assistantMsgId = Date.now().toString();
-      const currentMessages = messagesRef.current;
-      const updated = [...currentMessages,
-        { id: 'user_audio_' + assistantMsgId, role: 'user', content: data?.transcription || '🎤 Áudio enviado' },
-        { id: assistantMsgId, role: 'assistant', content: data?.response || 'Não consegui processar o áudio.', audioUri: data?.audio_base64 }
-      ];
-      setMessages(updated);
-      saveChatHistory(updated);
-      if (data?.audio_base64) playAudio(data.audio_base64, assistantMsgId);
-    } catch (e) {
-      const currentMessages = messagesRef.current;
-      const updated = [...currentMessages, {
-        id: Date.now().toString(), role: 'assistant',
-        content: '⚠️ Não consegui processar o áudio. Verifique a conexão.', isError: true,
-      }];
-      setMessages(updated);
-    } finally { setLoading(false); }
+      sendMessage(data?.transcription || 'Áudio processado');
+    } catch (e) {}
   };
 
   const playAudio = async (base64: string, id: string) => {
@@ -306,37 +164,11 @@ export default function AssistantScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={[styles.msgWrapper, item.role === 'user' ? styles.userWrap : styles.aiWrap]}>
-            <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble, item.isError && styles.errorBubble]}>
-               {item.role === 'assistant' && !item.isError ? (
-                 <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-               ) : null}
-               <Text style={[styles.msgText, item.role === 'user' ? styles.userText : styles.aiText]}>{item.content}</Text>
-                {item.audioUri && (
-                  <TouchableOpacity style={styles.audioBtn} onPress={() => playingId === item.id ? player.pause() : playAudio(item.audioUri, item.id)}>
-                    <Ionicons name={playingId === item.id ? "pause-circle" : "play-circle"} size={24} color={Colors.primary} />
-                    <Text style={styles.audioLabel}>Ouvir Resposta</Text>
-                  </TouchableOpacity>
-                )}
-            </View>
-          </View>
+          <MessageBubble item={item} playingId={playingId} onPlayAudio={playAudio} />
         )}
         ListFooterComponent={() => (
           <View>
-            {/* Typing indicator */}
-            {loading && (
-              <View style={[styles.msgWrapper, styles.aiWrap]}>
-                <Animated.View style={[styles.bubble, styles.aiBubble, { opacity: typingAnim }]}>
-                  <View style={styles.typingRow}>
-                    <View style={styles.typingDot} />
-                    <View style={[styles.typingDot, { marginHorizontal: 4 }]} />
-                    <View style={styles.typingDot} />
-                    <Text style={styles.typingText}>digitando...</Text>
-                  </View>
-                </Animated.View>
-              </View>
-            )}
-            {/* Retry button */}
+            <TypingIndicator visible={loading} />
             {failedMsgId && !loading && (
               <TouchableOpacity style={styles.retryBtn} onPress={retryLastMessage}>
                 <Ionicons name="refresh" size={16} color={Colors.primary} />
@@ -348,18 +180,7 @@ export default function AssistantScreen() {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
       />
 
-      {/* Quick Actions */}
-      {showQuickActions && !loading && (
-        <View style={{ marginBottom: 8 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickRow} contentContainerStyle={{ paddingRight: 48 }}>
-            {QUICK_ACTIONS.map((action, i) => (
-              <TouchableOpacity key={i} style={styles.quickChip} onPress={() => sendMessage(action.message)}>
-                <Text style={styles.quickChipText}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <QuickActions onAction={handleSendMessage} />
 
       {/* Input */}
       <View style={styles.inputSection}>
@@ -390,7 +211,7 @@ export default function AssistantScreen() {
                       maxLength={2000}
                     />
                     {inputText.trim() ? (
-                      <TouchableOpacity style={[styles.sendBtn, loading && { opacity: 0.5 }]} onPress={() => sendMessage()} disabled={loading}>
+                      <TouchableOpacity style={[styles.sendBtn, loading && { opacity: 0.5 }]} onPress={() => handleSendMessage()} disabled={loading}>
                         {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Ionicons name="arrow-up" size={20} color="#FFF" />}
                       </TouchableOpacity>
                     ) : (

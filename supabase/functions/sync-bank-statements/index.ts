@@ -60,10 +60,16 @@ function parseUrl(req: Request): URL {
   return new URL(req.url)
 }
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:8081",
+  "http://localhost:3000",
+  "https://app.meiflow.com.br",
+]
+
 function corsHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Webhook-Token",
   }

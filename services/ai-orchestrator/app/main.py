@@ -4,25 +4,26 @@ import io
 import logging
 import re
 
+import httpx
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
+from shared.middleware import CorrelationIdMiddleware, SecurityHeadersMiddleware
+
+# Rate Limiter
+from shared.rate_limiter import approve_limiter, reconciliation_limiter
 
 from agents.assistant.graph import assistant_app
 from agents.customer.graph import customer_app
 from app.config import settings
+from app.scheduler import start_scheduler
 from app.whatsapp_service import WhatsAppService
 from integrations.audio_service import AudioService
-from app.scheduler import start_scheduler
-from shared.middleware import SecurityHeadersMiddleware, CorrelationIdMiddleware
-import httpx
-from tools.crm_tools import _supabase_get, _supabase_patch, _supabase_post, _get_user_id_from_token
-
-# Rate Limiter
-from shared.rate_limiter import reconciliation_limiter, approve_limiter
+from tools.crm_tools import _get_user_id_from_token, _supabase_get, _supabase_patch, _supabase_post
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,16 @@ async def get_current_user_id(
                 return user_id
         except Exception as e:
             logger.warning(f"Falha ao validar JWT: {e}")
-    
+
     if request:
         internal_key = request.headers.get("X-Internal-Key", "")
         user_id_header = request.headers.get("X-User-Id", "")
         if internal_key and user_id_header:
             expected_key = getattr(settings, "INTERNAL_API_KEY", "") or ""
             if expected_key and internal_key == expected_key:
+                logger.warning(f"Internal key auth used for user {user_id_header[:8]}... — migrate to JWT")
                 return user_id_header
-    
+
     raise HTTPException(
         status_code=401,
         detail="Autenticação necessária. Envie Authorization: Bearer <jwt> ou X-Internal-Key + X-User-Id.",
@@ -58,6 +60,19 @@ async def get_current_user_id(
 app = FastAPI(title="MEIFlow AI Service", version="0.1.0")
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
+
+ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://localhost:3000",
+    "https://app.meiflow.com.br",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 async def startup_event():
@@ -71,9 +86,9 @@ class EmitInvoiceRequest(BaseModel):
 
 @app.post("/api/fiscal/emit")
 async def emit_invoice(data: EmitInvoiceRequest):
-    from tools.fiscal_tools import get_headers, FISCAL_SERVICE_URL
     from tools.crm_tools import CRM_SERVICE_URL
-    
+    from tools.fiscal_tools import FISCAL_SERVICE_URL, get_headers
+
     try:
         # 1. Fetch client details from CRM Service
         async with httpx.AsyncClient() as client_http:
@@ -82,10 +97,10 @@ async def emit_invoice(data: EmitInvoiceRequest):
             resp_crm.raise_for_status()
             clients = resp_crm.json()
             client = next((c for c in clients if c['id'] == data.client_id), None)
-            
+
         if not client:
             raise HTTPException(status_code=404, detail="Cliente não encontrado no CRM")
-            
+
         # 2. Call Fiscal Service to emit
         payload = {
             "user_id": data.user_id,
@@ -97,9 +112,9 @@ async def emit_invoice(data: EmitInvoiceRequest):
             resp_fiscal = await fiscal_http.post(f"{FISCAL_SERVICE_URL}/invoices", json=payload, headers=get_headers())
             resp_fiscal.raise_for_status()
             fiscal_res = resp_fiscal.json()
-            
+
         return {"success": True, "invoice": fiscal_res}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -113,25 +128,25 @@ async def get_accountant_report(user_id: str, month: int, year: int):
     """
     try:
         invoices = await _supabase_get("invoices", {"user_id": f"eq.{user_id}"})
-        
+
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['ID', 'Tipo', 'Direção', 'Emissor/Destinatário', 'Data', 'Valor', 'Status'])
-        
+
         total_faturamento = 0
         for inv in (invoices or []):
             writer.writerow([
-                inv.get('id'), inv.get('type'), inv.get('direction'), 
+                inv.get('id'), inv.get('type'), inv.get('direction'),
                 inv.get('receiver_name') or inv.get('issuer_name', 'Desconhecido'),
                 inv.get('issue_date'), inv.get('total_amount'), inv.get('status')
             ])
             if inv.get('direction') == 'outbound' and inv.get('status') == 'autorizada':
                 total_faturamento += float(inv.get('total_amount') or 0)
-                
+
         writer.writerow([])
         writer.writerow(['RESUMO DO MÊS'])
         writer.writerow(['Total Faturamento (Saída):', f"R$ {total_faturamento:.2f}"])
-        
+
         return PlainTextResponse(
             content=output.getvalue(),
             media_type="text/csv",
@@ -150,9 +165,9 @@ class CreateChargeRequest(BaseModel):
 
 @app.post("/api/billing/charge")
 async def create_billing_charge(data: CreateChargeRequest):
-    from tools.financial_tools import get_headers, FINANCIAL_SERVICE_URL
     from tools.crm_tools import CRM_SERVICE_URL
-    
+    from tools.financial_tools import FINANCIAL_SERVICE_URL, get_headers
+
     try:
         # 1. Fetch Client Name from CRM Service
         async with httpx.AsyncClient() as client_http:
@@ -161,7 +176,7 @@ async def create_billing_charge(data: CreateChargeRequest):
             clients = resp_crm.json()
             client = next((c for c in clients if c['id'] == data.client_id), None)
             client_name = client['name'] if client else "Cliente Avulso"
-        
+
         # 2. Se for Dinheiro, chama o Financial Service
         if data.method == 'cash':
             payload_trans = {
@@ -174,15 +189,15 @@ async def create_billing_charge(data: CreateChargeRequest):
                 resp_fin = await fin_http.post(f"{FINANCIAL_SERVICE_URL}/transactions", json=payload_trans, headers=get_headers())
                 resp_fin.raise_for_status()
                 res = resp_fin.json()
-                
+
             return {"success": True, "transaction": res, "message": "Pagamento registrado no domínio financeiro."}
 
         # 3. Se for PIX/Cartão, chamaria o Gateway externo (mantido mock por enquanto)
         return {"success": True, "message": "Gateway de pagamento não implementado nesta fase."}
-        
+
     except Exception as e:
         logger.error(f"Erro ao criar cobrança: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro interno ao processar cobrança.")
 
 @app.post("/api/webhooks/asaas")
 async def webhook_asaas(request: Request, event_data: dict):
@@ -193,28 +208,28 @@ async def webhook_asaas(request: Request, event_data: dict):
     # Validação do token de webhook
     token = request.headers.get("asaas-access-token", "")
     if settings.ASAAS_WEBHOOK_TOKEN and token != settings.ASAAS_WEBHOOK_TOKEN:
-        logger.warning(f"Webhook Asaas rejeitado: token inválido")
+        logger.warning("Webhook Asaas rejeitado: token inválido")
         raise HTTPException(status_code=403, detail="Token inválido")
-    
+
     try:
         event_type = event_data.get('event', '')
         if event_type == 'PAYMENT_RECEIVED':
             payment_info = event_data.get('payment')
             if not payment_info or not payment_info.get('id'):
                 return {"message": "Payload inválido."}
-            
+
             ext_ref = payment_info['id']
             charges = await _supabase_get("charges", {"external_reference": f"eq.{ext_ref}"})
             if not charges:
                 return {"message": "Charge não encontrada."}
-                
+
             charge = charges[0]
             if charge.get('status') == 'paid':
                 return {"message": "Charge já estava paga."}
-            
+
             # Atualiza charge para pago usando _supabase_patch
             await _supabase_patch("charges", "external_reference", ext_ref, {"status": "paid"})
-            
+
             # Insere no caixa (transactions)
             payload_trans = {
                 "user_id": charge.get("user_id", ""),
@@ -226,10 +241,10 @@ async def webhook_asaas(request: Request, event_data: dict):
                 "client_id": charge.get("client_id", ""),
             }
             await _supabase_post("transactions", payload_trans)
-                
+
             logger.info(f"Pagamento confirmado: {ext_ref}")
             return {"success": True, "message": "Pagamento liquidado."}
-            
+
         return {"message": "Evento ignorado."}
     except HTTPException:
         raise
@@ -255,11 +270,11 @@ async def api_chat(data: ChatRequest):
             "user_id": data.user_id,
         }
         config = {"configurable": {"thread_id": data.thread_id}}
-        
+
         logger.info(f"Chat user={data.user_id} provider={data.provider or 'default'}")
         result = await assistant_app.ainvoke(initial_state, config=config)
         ai_response_text = result["messages"][-1].content or ""
-        
+
         return {"response": ai_response_text, "thread_id": data.thread_id}
     except Exception as e:
         logger.error(f"Erro no chat: {e}")
@@ -278,29 +293,29 @@ async def api_chat_audio(data: AudioChatRequest):
         # 1. Decodifica e transcreve o áudio
         audio_bytes = base64.b64decode(data.audio_base64)
         transcribed_text = await AudioService.transcribe_audio(audio_bytes, f"app_{data.user_id[:8]}.m4a")
-        
+
         if not transcribed_text:
             return {"response": "Não consegui entender o áudio. Tente novamente.", "transcription": "", "audio_base64": None}
-        
+
         logger.info(f"Áudio transcrito: '{transcribed_text[:50]}...'")
-        
+
         # 2. Processa com a IA (mesmo fluxo do chat texto)
         initial_state = {
             "messages": [HumanMessage(content=transcribed_text)],
             "user_id": data.user_id,
         }
         config = {"configurable": {"thread_id": data.thread_id}}
-        
+
         result = await assistant_app.ainvoke(initial_state, config=config)
         ai_response_text = result["messages"][-1].content or ""
-        
+
         # 3. Gera áudio da resposta (TTS) se solicitado
         response_audio_b64 = None
         if data.return_audio and ai_response_text:
             tts_bytes = await AudioService.generate_speech(ai_response_text)
             if tts_bytes:
                 response_audio_b64 = base64.b64encode(tts_bytes).decode('utf-8')
-        
+
         return {
             "response": ai_response_text,
             "transcription": transcribed_text,
@@ -408,7 +423,7 @@ async def whatsapp_webhook(request: Request, data: dict):
         raise HTTPException(status_code=403, detail="Token inválido")
 
     event = data.get('event', '').lower()
-    
+
     if event in ['messages.upsert', 'messages_upsert']:
         message_data = data.get('data', {})
         message = message_data.get('message', {})
@@ -421,7 +436,7 @@ async def whatsapp_webhook(request: Request, data: dict):
             return {"status": "ignored_self"}
 
         client_phone = remote_jid.split('@')[0]
-        
+
         # 1. VERIFICAR SE O ATENDIMENTO HUMANO ESTÁ ATIVADO
         client_record = await _supabase_get("clients", {"whatsapp_number": f"eq.{client_phone}"})
         if client_record:
@@ -435,7 +450,7 @@ async def whatsapp_webhook(request: Request, data: dict):
         # 2. EXTRAIR TEXTO OU ÁUDIO
         text = ""
         is_audio = False
-        
+
         if 'conversation' in message:
             text = message['conversation']
         elif 'extendedTextMessage' in message:
@@ -455,8 +470,9 @@ async def whatsapp_webhook(request: Request, data: dict):
                 media_response = await WhatsAppService.download_media(instance_name, message_id)
                 if media_response and 'base64' in media_response:
                     try:
-                        import pypdf
                         import io
+
+                        import pypdf
                         pdf_bytes = base64.b64decode(media_response['base64'])
                         pdf_file = io.BytesIO(pdf_bytes)
                         reader = pypdf.PdfReader(pdf_file)
@@ -476,13 +492,13 @@ async def whatsapp_webhook(request: Request, data: dict):
                 "mei_id": mei_user_id,
                 "client_phone": client_phone
             }
-            
+
             config = {"configurable": {"thread_id": client_phone}}
-            
+
             logger.info(f"Invocando IA para cliente {client_phone}...")
             result = await customer_app.ainvoke(initial_state, config=config)
             ai_response_text = result["messages"][-1].content or ""
-            
+
             # Checa se a IA quer enviar uma imagem
             img_match = re.search(r'\[IMG:(.*?)\]', ai_response_text)
             media_url = None
@@ -494,7 +510,7 @@ async def whatsapp_webhook(request: Request, data: dict):
             if media_url:
                 logger.info(f"Enviando mídia: {media_url}")
                 await WhatsAppService.send_media(instance_name, client_phone, media_url, ai_response_text)
-                
+
             elif is_audio:
                 logger.info("Gerando resposta em áudio...")
                 audio_bytes = await AudioService.generate_speech(ai_response_text)
@@ -524,11 +540,11 @@ async def get_reconciliations(
             detail=f"Muitas requisições. Tente novamente em {retry_after} segundos.",
             headers={"Retry-After": str(retry_after)},
         )
-    
+
     try:
-        from agents.accounting.reconciler import reconciler_agent
         from agents.accounting.categorizer import categorizer_agent
-        
+        from agents.accounting.reconciler import reconciler_agent
+
         # 1. Fetch un-reconciled bank statements
         statements = (
             await _supabase_get("bank_statements", {
@@ -603,7 +619,7 @@ async def approve_reconciliation(
             detail=f"Muitas requisições. Tente novamente em {retry_after} segundos.",
             headers={"Retry-After": str(retry_after)},
         )
-    
+
     try:
         # Verificar que o statement pertence ao usuário autenticado
         statements = await _supabase_get("bank_statements", {

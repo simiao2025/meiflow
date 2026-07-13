@@ -1,8 +1,8 @@
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
-const INTERNAL_KEY = process.env.EXPO_PUBLIC_INTERNAL_KEY || 'meiflow_internal_key_troque_em_producao';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
+const INTERNAL_KEY = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;

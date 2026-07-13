@@ -23,6 +23,8 @@ export default function AnnualDeclaration() {
 
   const [isTransmitting, setIsTransmitting] = useState(false);
 
+  const MEI_ANNUAL_LIMIT = 130000;
+
   const handleTransmit = async () => {
     Alert.alert(
       'Transmitir DASN-SIMEI',
@@ -38,10 +40,11 @@ export default function AnnualDeclaration() {
     setIsTransmitting(true);
     try {
       // 1. Inserir no Supabase
-      const { error } = await supabase.from('dasn_declarations').insert({
+      const { error } = await supabase.from('annual_declarations').insert({
         user_id: user?.id,
         year: selectedYear,
-        gross_revenue: totalRevenue,
+        total_revenue_services: revenueServices,
+        total_revenue_commerce: revenueCommerce,
         status: 'sent',
       });
 
@@ -99,14 +102,14 @@ export default function AnnualDeclaration() {
         {/* Alerta de Limite MEI */}
         <View style={styles.limitContainer}>
           <View style={styles.limitHeader}>
-            <Text style={styles.limitTitle}>Limite do MEI (81k)</Text>
-            <Text style={styles.limitPercent}>{((totalRevenue / 81000) * 100).toFixed(1)}%</Text>
+            <Text style={styles.limitTitle}>Limite do MEI (R$ 130k)</Text>
+            <Text style={styles.limitPercent}>{((totalRevenue / MEI_ANNUAL_LIMIT) * 100).toFixed(1)}%</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${(totalRevenue / 81000) * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${Math.min((totalRevenue / MEI_ANNUAL_LIMIT) * 100, 100)}%` }]} />
           </View>
           <Text style={styles.limitInfo}>
-            Você ainda pode faturar R$ {(81000 - totalRevenue).toLocaleString('pt-BR')} este ano.
+            Você ainda pode faturar R$ {Math.max(0, MEI_ANNUAL_LIMIT - totalRevenue).toLocaleString('pt-BR')} este ano.
           </Text>
         </View>
 
@@ -120,6 +123,11 @@ export default function AnnualDeclaration() {
 
         <Text style={styles.footerHelp}>
           O MEIFlow utiliza o login único do Gov.br para transmitir sua declaração com segurança e capturar o recibo original.
+        </Text>
+
+        <Text style={styles.disclaimer}>
+          Aviso: Este não é um documento oficial. O MEIFlow não substitui a orientação de um contador habilitado.
+          Valores e prazos devem ser verificados antes da transmissão.
         </Text>
       </ScrollView>
     </View>
@@ -264,5 +272,14 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     lineHeight: 18,
+  },
+  disclaimer: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: '#71717A',
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
+    paddingHorizontal: 16,
   }
 });

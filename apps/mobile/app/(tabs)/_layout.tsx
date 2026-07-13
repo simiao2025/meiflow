@@ -54,6 +54,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'grid' : 'grid-outline'} size={26} color={color} />
           ),
+          tabBarAccessibilityLabel: 'Painel principal',
         }}
       />
       <Tabs.Screen
@@ -63,6 +64,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={26} color={color} />
           ),
+          tabBarAccessibilityLabel: 'Gestão fiscal',
         }}
       />
       <Tabs.Screen
@@ -72,6 +74,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={26} color={color} />
           ),
+          tabBarAccessibilityLabel: 'Gestão de clientes',
         }}
       />
       <Tabs.Screen
@@ -83,6 +86,7 @@ export default function TabLayout() {
               <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={28} color={focused ? '#FFF' : color} />
             </View>
           ),
+          tabBarAccessibilityLabel: 'Assistente de inteligência artificial',
         }}
       />
       <Tabs.Screen
@@ -92,6 +96,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'rocket' : 'rocket-outline'} size={26} color={color} />
           ),
+          tabBarAccessibilityLabel: 'Oportunidades e licitações',
         }}
       />
       <Tabs.Screen
@@ -101,6 +106,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={26} color={color} />
           ),
+          tabBarAccessibilityLabel: 'Financeiro',
         }}
       />
       {/* Escondidos */}

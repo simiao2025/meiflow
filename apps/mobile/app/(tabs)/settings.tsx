@@ -24,6 +24,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useThemeColors, Palette, Typography } from '../../constants/theme';
 
+const PRIVACY_POLICY_URL = 'https://meiflow.com.br/privacidade';
+const TERMS_OF_USE_URL = 'https://meiflow.com.br/termos';
+const SUPPORT_WHATSAPP = 'https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20MEIFlow';
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuthStore();
@@ -35,9 +39,10 @@ export default function SettingsScreen() {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [pairingCode, setPairingCode] = useState('');
   const [pairingStatus, setPairingStatus] = useState<'idle' | 'loading' | 'polling' | 'connected'>('idle');
+  const [loading, setLoading] = useState(false);
    const pollingInterval = useRef<number | null>(null);
 
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.203';
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
 
   // Limpa o polling se o modal for fechado ou componente desmontado
   useEffect(() => {
@@ -79,7 +84,7 @@ export default function SettingsScreen() {
     }
     setPairingStatus('loading');
     try {
-      const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || 'meiflow_secret_2026_internal';
+      const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
       const response = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/pairing-code`, {
         method: 'POST',
         headers: { 
@@ -119,7 +124,7 @@ export default function SettingsScreen() {
     
     pollingInterval.current = setInterval(async () => {
       try {
-        const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || 'meiflow_secret_2026_internal';
+        const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
         const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/status/${user?.id}`, {
           headers: { 'X-Internal-Key': internalKey }
         });
@@ -205,7 +210,7 @@ export default function SettingsScreen() {
               } else if (profile?.cnpj) {
                 // Lógica de Auto-Cura para usuários antigos
                 try {
-                  const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || 'meiflow_secret_2026_internal';
+                  const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
                   const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
                     method: 'POST',
                     headers: { 
@@ -266,7 +271,44 @@ export default function SettingsScreen() {
           <SettingsItem 
             icon="shield-checkmark-outline" 
             title="Privacidade e Dados" 
-            onPress={() => Alert.alert('LGPD', 'Seus dados são protegidos com criptografia de ponta a ponta.')}
+            subtitle="Política de Privacidade e Termos"
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          />
+          <View style={styles.divider} />
+          <SettingsItem 
+            icon="document-text-outline" 
+            title="Termos de Uso" 
+            onPress={() => Linking.openURL(TERMS_OF_USE_URL)}
+          />
+          <View style={styles.divider} />
+          <SettingsItem 
+            icon="trash-outline" 
+            title="Excluir Minha Conta" 
+            subtitle="Remover todos os seus dados permanentemente"
+            onPress={() => {
+              Alert.alert(
+                'Excluir Conta',
+                'Esta ação é irreversível. Todos os seus dados pessoais, transações, notas fiscais e configurações serão permanentemente removidos.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { 
+                    text: 'Excluir', 
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        setLoading(true);
+                        const { error } = await supabase.rpc('delete_user_account');
+                        if (error) throw error;
+                        await supabase.auth.signOut();
+                        Alert.alert('Conta Excluída', 'Seus dados foram removidos com sucesso.');
+                      } catch (e: any) {
+                        Alert.alert('Erro', 'Não foi possível excluir a conta. Entre em contato com o suporte.');
+                      }
+                    }
+                  },
+                ]
+              );
+            }}
           />
         </View>
       </View>
@@ -277,7 +319,7 @@ export default function SettingsScreen() {
           <SettingsItem 
             icon="help-circle-outline" 
             title="Central de Ajuda" 
-            onPress={() => Linking.openURL('https://wa.me/5511999999999?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20MEIFlow')}
+            onPress={() => Linking.openURL(SUPPORT_WHATSAPP)}
           />
           <View style={styles.divider} />
           <SettingsItem 

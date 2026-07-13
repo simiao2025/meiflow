@@ -10,22 +10,22 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://xtnpqomctbryzzdkerfp.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0bnBxb21jdGJyeXp6ZGtlcmZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDU2NDAsImV4cCI6MjA5MzgyMTY0MH0.KNPT7aAIRCOuHveZXE4Q3GHdEtr8hRcSjGsTC3dJOiY",
-        "EXPO_PUBLIC_INTERNAL_KEY": "meiflow_secret_2026_internal",
         "EXPO_PUBLIC_API_URL": "https://meiflow-ai-orchestrator.onrender.com",
-        "EXPO_PUBLIC_AI_SERVICE_URL": "https://meiflow-ai-orchestrator.onrender.com/api/v1/chat",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://xtnpqomctbryzzdkerfp.supabase.co"
+        "EXPO_PUBLIC_AI_SERVICE_URL": "https://meiflow-ai-orchestrator.onrender.com/api/v1/chat"
       },
       "channel": "preview"
     },
     "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "autoIncrement": true,
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://xtnpqomctbryzzdkerfp.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0bnBxb21jdGJyeXp6ZGtlcmZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDU2NDAsImV4cCI6MjA5MzgyMTY0MH0.KNPT7aAIRCOuHveZXE4Q3GHdEtr8hRcSjGsTC3dJOiY",
-        "EXPO_PUBLIC_INTERNAL_KEY": "meiflow_secret_2026_internal",
         "EXPO_PUBLIC_API_URL": "https://meiflow-ai-orchestrator.onrender.com",
-        "EXPO_PUBLIC_AI_SERVICE_URL": "https://meiflow-ai-orchestrator.onrender.com/api/v1/chat",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://xtnpqomctbryzzdkerfp.supabase.co"
+        "EXPO_PUBLIC_AI_SERVICE_URL": "https://meiflow-ai-orchestrator.onrender.com/api/v1/chat"
       }
     }
   }
