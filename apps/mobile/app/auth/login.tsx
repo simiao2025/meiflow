@@ -80,7 +80,7 @@ export default function LoginScreen() {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
       {/* Camada de Gradiente Premium */}
       <LinearGradient 
-        colors={['#050505', '#0A0A0A']} 
+        colors={[Colors.bg, Colors.bgInner]} 
         style={StyleSheet.absoluteFillObject}
       />
 

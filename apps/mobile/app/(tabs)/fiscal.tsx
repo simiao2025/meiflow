@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   h1: { color: Colors.text, fontFamily: Typography.fonts.display, fontSize: 32 },
   bentoRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 24 },
   bezelOuter: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 1.5, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)' },
-  bezelInner: { backgroundColor: '#0F172A', borderRadius: 22.5, padding: 20 },
+  bezelInner: { backgroundColor: Colors.bgInner, borderRadius: 22.5, padding: 20 },
   statLabel: { color: Colors.textMuted, fontSize: 9, fontFamily: Typography.fonts.display, letterSpacing: 1.5 },
   statValLarge: { color: Colors.text, fontSize: 26, fontFamily: Typography.fonts.display, marginTop: 8 },
   statSub: { color: Colors.primary, fontSize: 11, fontFamily: Typography.fonts.medium, marginTop: 4 },
