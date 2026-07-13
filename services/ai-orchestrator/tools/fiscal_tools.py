@@ -1,6 +1,6 @@
-import httpx
 import os
 import sys
+
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,7 @@ FISCAL_SERVICE_URL = os.getenv("FISCAL_SERVICE_URL", "http://localhost:8002")
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
 
 from shared.database import supabase
+
 
 def get_headers():
     headers = {"X-Internal-Key": INTERNAL_API_KEY} if INTERNAL_API_KEY else {}

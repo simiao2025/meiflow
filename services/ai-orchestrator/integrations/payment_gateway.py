@@ -1,5 +1,6 @@
-import uuid
 import asyncio
+import uuid
+
 
 class PaymentGatewayService:
     """
@@ -15,12 +16,12 @@ class PaymentGatewayService:
         Payload esperado: { "amount": float, "method": "pix"|"credit_card", "description": str, "client_name": str }
         """
         print(f"[GATEWAY] Criando cobrança de R$ {payload['amount']} via {payload['method']}...")
-        
+
         # Simula latência de rede
         await asyncio.sleep(1.5)
-        
+
         external_id = f"pay_{uuid.uuid4().hex[:12]}"
-        
+
         if payload['method'] == 'pix':
             return {
                 "status": "pending",

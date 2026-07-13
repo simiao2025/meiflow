@@ -1,12 +1,11 @@
+import os
+import sys
+
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
-import sys
-import os
-import httpx
 
 # Adiciona o diretório shared ao path para importar os modelos
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from shared.cache import get_cached, set_cache
 from shared.middleware import correlation_id_ctx
 
 # URL do microserviço financeiro (pode ser configurado via env)
@@ -30,6 +29,7 @@ class ConsultarTransacoesInput(BaseModel):
 
 from shared.database import supabase
 
+
 @tool("consultar_transacoes", args_schema=ConsultarTransacoesInput)
 async def consultar_transacoes(user_id: str, tipo: str = "todos", limite: int = 20) -> str:
     """Consulta as transações financeiras do MEI via Banco de Dados."""
@@ -39,7 +39,7 @@ async def consultar_transacoes(user_id: str, tipo: str = "todos", limite: int = 
             query = query.eq("type", "receita")
         elif tipo.lower() == "despesa":
             query = query.eq("type", "despesa")
-            
+
         resp = query.order("created_at", desc=True).limit(limite).execute()
         items = resp.data
 
@@ -63,14 +63,14 @@ async def resumo_financeiro(user_id: str) -> str:
         # Puxa todas as transacoes do mes atual, simplificado para MVP
         resp = supabase.table("transactions").select("*").eq("user_id", user_id).execute()
         items = resp.data
-        
+
         if not items:
             return "💰 Resumo Consolidado:\n📊 Saldo líquido atual: R$ 0.00"
-            
+
         saldo = sum([t['amount'] if t['type'] == 'receita' else -t['amount'] for t in items])
         receitas = sum([t['amount'] for t in items if t['type'] == 'receita'])
         despesas = sum([t['amount'] for t in items if t['type'] == 'despesa'])
-        
+
         return (
             f"💰 Resumo Consolidado:\n"
             f"📈 Total Receitas: R$ {receitas:.2f}\n"

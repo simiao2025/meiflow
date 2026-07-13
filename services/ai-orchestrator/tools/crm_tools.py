@@ -1,6 +1,6 @@
-import httpx
 import os
 import sys
+
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ def get_headers():
     return headers
 
 from shared.database import supabase
+
 
 def _get_user_id_from_token(token: str) -> str | None:
     """
@@ -75,7 +76,7 @@ async def listar_clientes(user_id: str) -> str:
     """Lista todos os clientes cadastrados via CRM Service."""
     try:
         items = await _supabase_get("clients", {"user_id": f"eq.{user_id}"})
-        
+
         if not items:
             return "Nenhum cliente cadastrado."
 
@@ -166,7 +167,7 @@ async def consultar_catalogo(user_id: str, termo: str = "") -> str:
         items = await _supabase_get("catalog", {"user_id": f"eq.{user_id}"})
         if not items:
             return "Catálogo vazio."
-        
+
         lines = ["Itens no catálogo:"]
         for i in items:
             if termo.lower() in i.get('name', '').lower() or termo.lower() in i.get('description', '').lower() or not termo:
@@ -190,7 +191,7 @@ async def gerar_cobranca(user_id: str, client_id: str, amount: float, method: st
         }
         resp = await _supabase_post("charges", payload)
         charge_id = resp[0]['id'] if resp else 'N/A'
-        
+
         # Link simulado para o MVP
         link = f"https://meiflow.app/pay/{charge_id}"
         return f"Cobrança de R$ {amount:.2f} gerada com sucesso! Link para pagamento: {link}"

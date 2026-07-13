@@ -1,14 +1,16 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta, timezone
-from tools.crm_tools import _supabase_get, _supabase_patch
-from app.whatsapp_service import WhatsAppService
-from langchain_core.messages import SystemMessage
-from agents.customer.graph import customer_app
+
+from agents.accounting.categorizer import categorizer_agent
 
 # Importações para auto-reconciliation
 from agents.accounting.reconciler import reconciler_agent
-from agents.accounting.categorizer import categorizer_agent
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from langchain_core.messages import SystemMessage
 from shared.rate_limiter import public_api_limiter, reconciliation_limiter
+
+from agents.customer.graph import customer_app
+from app.whatsapp_service import WhatsAppService
+from tools.crm_tools import _supabase_get, _supabase_patch
 
 scheduler = AsyncIOScheduler()
 
@@ -22,25 +24,25 @@ async def check_pending_followups():
         # Idealmente, teríamos um campo 'last_message_at' ou 'status' para otimizar isso.
         # Aqui fazemos um envio simulado de 'SYSTEM_EVENT' para o grafo avaliar se precisa de followup.
         print("Executando checagem de follow-up das conversas...")
-        
+
         # Exemplo: Buscando todos os clientes com IA ativada
         clients = await _supabase_get("clients", {"ai_agent_enabled": "eq.true"})
-        
+
         now = datetime.now(timezone.utc)
         thirty_mins_ago = now - timedelta(minutes=30)
         two_hours_ago = now - timedelta(hours=2)
-        
+
         for client in clients:
             updated_str = client.get("updated_at")
             if not updated_str: continue
-            
+
             # Formato esperado: 2026-05-12T03:02:58+00:00
             # Evita erros de parse simplificando
             try:
                 updated_at = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
                 if two_hours_ago < updated_at < thirty_mins_ago:
                     phone = client["whatsapp_number"]
-                    
+
                     # Invoca o agente silenciosamente passando uma mensagem de sistema
                     # O agente vai olhar o histórico e decidir se deve mandar follow up
                     print(f"Pedindo para IA avaliar follow-up do cliente {phone}")
@@ -52,7 +54,7 @@ async def check_pending_followups():
                     config = {"configurable": {"thread_id": phone}}
                     result = await customer_app.ainvoke(initial_state, config=config)
                     ai_response = result["messages"][-1].content
-                    
+
                     if "SKIP" not in ai_response:
                         await WhatsAppService.send_message(
                             "instancia_padrao", # Deveria pegar de env ou config
@@ -61,10 +63,10 @@ async def check_pending_followups():
                         )
                         # Atualizamos o updated_at para não cobrar de novo
                         await _supabase_patch("clients", "id", client["id"], {})
-                        
+
             except Exception as e:
                 print(f"Erro ao processar follow-up do cliente {client.get('id')}: {e}")
-                
+
     except Exception as e:
         print(f"Erro geral no scheduler de followups: {e}")
 
@@ -200,14 +202,14 @@ async def check_appointment_reminders():
         # Pega agendamentos onde status é 'pending'
         appointments = await _supabase_get("appointments", {"status": "eq.pending"})
         now = datetime.now(timezone.utc)
-        
+
         for appt in appointments:
             sched_str = appt.get("scheduled_at")
             if not sched_str: continue
-            
+
             sched_at = datetime.fromisoformat(sched_str.replace("Z", "+00:00"))
             time_diff = sched_at - now
-            
+
             # Se for nas próximas 24h e ainda não avisado
             if timedelta(hours=0) < time_diff < timedelta(hours=24):
                 # Busca cliente
@@ -216,7 +218,7 @@ async def check_appointment_reminders():
                     phone = client[0]["whatsapp_number"]
                     nome = client[0]["name"]
                     mensagem = f"Olá {nome}! Passando para lembrar do seu agendamento de '{appt['description']}' amanhã às {sched_at.strftime('%H:%M')}. Confirma sua presença?"
-                    
+
                     await WhatsAppService.send_message("instancia_padrao", phone, mensagem)
                     # Atualiza status para evitar duplo envio
                     await _supabase_patch("appointments", "id", appt["id"], {"status": "reminded"})
