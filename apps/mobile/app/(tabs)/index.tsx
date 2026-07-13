@@ -4,12 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'expo-router';
-import { useThemeColors, Typography, Palette, Colors as StaticColors } from '../../constants/theme';
+import { useThemeColors, Typography, Palette } from '../../constants/theme';
 import { financialService, fiscalService } from '../../services/api';
 import { BalanceCard } from '../../components/dashboard/BalanceCard';
-import { QuickActions } from '../../components/dashboard/QuickActions';
 import { FiscalCard } from '../../components/dashboard/FiscalCard';
-import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
 export default function DashboardScreen() {
   const { user, profile } = useAuthStore();
@@ -67,7 +66,7 @@ export default function DashboardScreen() {
               <Text style={[styles.companyName, { color: Colors.text }]}>{profile?.nome_fantasia || profile?.razao_social || 'Sua Empresa'}</Text>
             </View>
             <TouchableOpacity style={styles.profileBtnRight} onPress={() => router.push('/profile')}>
-              <LinearGradient colors={[Colors.primary, Palette.gold[600]]} style={[styles.profileBadge, { shadowColor: Colors.primary }]}>
+              <LinearGradient colors={[Colors.primary, Palette.gold[600]]} style={[styles.profileBadge]}>
                 <Ionicons name="person" size={20} color={Palette.black} />
               </LinearGradient>
             </TouchableOpacity>
@@ -78,150 +77,167 @@ export default function DashboardScreen() {
           <BalanceCard balance={balance} growth={growth} loading={loading} onRefresh={loadData} />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(300).springify().damping(14)}>
-          <QuickActions
-            actions={[
-              { icon: 'add', label: 'Receita', color: Colors.primary },
-              { icon: 'remove', label: 'Despesa', color: '#FCA5A5' },
-              { icon: 'document-text-outline', label: 'NFS-e', color: '#7DD3FC', onPress: () => router.push('/fiscal') },
-              { icon: 'qr-code-outline', label: 'Guia DAS', color: '#FCD34D', onPress: () => router.push('/fiscal') },
-            ]}
-          />
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(400).springify().damping(14)} style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Gestão Inteligente</Text>
-            <TouchableOpacity style={[styles.alertBadge, { borderColor: Colors.border }]}>
-              <View style={[styles.liveDot, { backgroundColor: Colors.primary }]} />
-              <Text style={[styles.liveText, { color: Colors.text }]}>Notícias Legais</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.smartRow}>
-            <SmartButton
+        {/* Ações Rápidas - 4 fluxos principais do MEI */}
+        <Animated.View entering={FadeInUp.delay(300).springify().damping(14)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Ações Rápidas</Text>
+          <View style={styles.actionsGrid}>
+            <ActionButton
+              icon="add-circle-outline"
+              title="Registrar Receita"
+              color="#22C55E"
+              onPress={() => router.push('/(tabs)/two')}
+            />
+            <ActionButton
+              icon="remove-circle-outline"
+              title="Registrar Despesa"
+              color="#EF4444"
+              onPress={() => router.push('/(tabs)/two')}
+            />
+            <ActionButton
+              icon="document-text-outline"
+              title="Emitir NFS-e"
+              color="#3B82F6"
+              onPress={() => router.push('/fiscal/emit')}
+            />
+            <ActionButton
               icon="cash-outline"
               title="Cobrar Cliente"
-              subtitle="PIX ou Cartão"
-              color={Colors.primary}
+              color="#F59E0B"
               onPress={() => router.push('/billing/charge')}
             />
-            <SmartButton
-              icon="calendar-outline"
-              title="Agenda"
-              subtitle="Compromissos"
-              color="#818CF8"
-              onPress={() => router.push('/schedule')}
-            />
-          </View>
-          <View style={[styles.smartRow, { marginTop: 12 }]}>
-            <SmartButton
-              icon="pricetags-outline"
-              title="Meu Catálogo"
-              subtitle="Serviços e Produtos"
-              color={Palette.warning}
-              onPress={() => router.push('/catalog')}
-            />
-            <SmartButton
-              icon="cart-outline"
-              title="Frente de Caixa"
-              subtitle="PDV e Vendas"
-              color="#10B981"
-              onPress={() => router.push('/pos')}
-            />
-          </View>
-          <View style={[styles.smartRow, { marginTop: 12 }]}>
-            <SmartButton
-              icon="settings-outline"
-              title="Ajustes"
-              subtitle="Conta e App"
-              color={Colors.textMuted}
-              onPress={() => router.push('/settings')}
-            />
-            <View style={{ flex: 1 }} />
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(500).springify().damping(14)}>
+        {/* Status Fiscal */}
+        <Animated.View entering={FadeInUp.delay(400).springify().damping(14)}>
           <FiscalCard nextDas={nextDas} onPress={() => router.push('/fiscal')} />
+        </Animated.View>
+
+        {/* Acessos Rápidos */}
+        <Animated.View entering={FadeInUp.delay(500).springify().damping(14)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>Mais Acessos</Text>
+          <View style={styles.shortcutsRow}>
+            <ShortcutButton
+              icon="people-outline"
+              title="Clientes"
+              onPress={() => router.push('/(tabs)/clients')}
+            />
+            <ShortcutButton
+              icon="sparkles-outline"
+              title="Assistente IA"
+              onPress={() => router.push('/(tabs)/assistant')}
+            />
+            <ShortcutButton
+              icon="calendar-outline"
+              title="Agenda"
+              onPress={() => router.push('/schedule')}
+            />
+            <ShortcutButton
+              icon="settings-outline"
+              title="Ajustes"
+              onPress={() => router.push('/settings')}
+            />
+          </View>
         </Animated.View>
       </Animated.ScrollView>
     </View>
   );
 }
 
-function SmartButton({ icon, title, subtitle, color, onPress }: any) {
-  const scale = useSharedValue(1);
+function ActionButton({ icon, title, color, onPress }: { icon: any; title: string; color: string; onPress: () => void }) {
   const Colors = useThemeColors();
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return { transform: [{ scale: scale.value }] };
-  });
-
   return (
-    <Animated.View style={[styles.smartBtnWrapper, animatedStyle]}>
-      <TouchableOpacity 
-        style={[styles.smartBtn, { borderColor: Colors.borderStrong, backgroundColor: Colors.bgCard }]} 
-        onPress={onPress}
-        activeOpacity={1}
-        onPressIn={() => { scale.value = withSpring(0.95, { damping: 12 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 12 }); }}
-      >
-        <View style={[styles.smartIcon, { backgroundColor: color + '15' }]}>
-          <Ionicons name={icon as any} size={20} color={color} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.smartTitle, { color: Colors.text }]} numberOfLines={2}>{title}</Text>
-          <Text style={[styles.smartSubtitle, { color: Colors.textMuted }]}>{subtitle}</Text>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
+    <TouchableOpacity style={[styles.actionBtn, { borderColor: Colors.borderStrong, backgroundColor: Colors.bgCard }]} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.actionIcon, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={28} color={color} />
+      </View>
+      <Text style={[styles.actionTitle, { color: Colors.text }]} numberOfLines={2}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ShortcutButton({ icon, title, onPress }: { icon: any; title: string; onPress: () => void }) {
+  const Colors = useThemeColors();
+  return (
+    <TouchableOpacity style={[styles.shortcutBtn, { backgroundColor: Colors.bgCard, borderColor: Colors.border }]} onPress={onPress} activeOpacity={0.7}>
+      <Ionicons name={icon} size={22} color={Colors.primary} />
+      <Text style={[styles.shortcutTitle, { color: Colors.textSecondary }]} numberOfLines={1}>{title}</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    paddingHorizontal: 24, 
+  header: {
+    paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    marginBottom: 10 
+    marginBottom: 10
   },
-  headerRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-end' 
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end'
   },
   greetingText: { fontSize: 16, fontFamily: Typography.fonts.medium },
-  companyName: { fontSize: 32, fontFamily: Typography.fonts.display, marginTop: 4, letterSpacing: -1 },
+  companyName: { fontSize: 28, fontFamily: Typography.fonts.display, marginTop: 4, letterSpacing: -1 },
   profileBtnRight: { marginBottom: 4 },
-  profileBadge: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 14, 
-    justifyContent: 'center', 
+  profileBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: StaticColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5
   },
-  section: { paddingHorizontal: 24, marginTop: 25 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sectionTitle: { fontSize: 18, fontFamily: Typography.fonts.display, letterSpacing: -0.5 },
-  alertBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'transparent', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 0.5 },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveText: { fontSize: 10, fontFamily: Typography.fonts.medium, letterSpacing: 0.2 },
-  smartRow: { flexDirection: 'row', gap: 12 },
-  smartBtnWrapper: { flex: 1 },
-  smartBtn: { 
-    borderRadius: 20, 
-    padding: 14, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12, 
-    borderWidth: 0.5, 
+  section: { paddingHorizontal: 24, marginTop: 28 },
+  sectionTitle: { fontSize: 18, fontFamily: Typography.fonts.display, letterSpacing: -0.5, marginBottom: 16 },
+
+  // Grid de ações principais (2x2)
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  smartIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  smartTitle: { fontSize: 13, fontFamily: Typography.fonts.display },
-  smartSubtitle: { fontSize: 10, fontFamily: Typography.fonts.medium },
+  actionBtn: {
+    width: '47%',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 0.5,
+    minHeight: 100,
+    justifyContent: 'center',
+  },
+  actionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  actionTitle: {
+    fontSize: 13,
+    fontFamily: Typography.fonts.display,
+    textAlign: 'center',
+  },
+
+  // Atalhos secundários (4 itens horizontais)
+  shortcutsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  shortcutBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    gap: 6,
+  },
+  shortcutTitle: {
+    fontSize: 11,
+    fontFamily: Typography.fonts.medium,
+    textAlign: 'center',
+  },
 });

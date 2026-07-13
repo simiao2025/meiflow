@@ -1,29 +1,22 @@
 import React from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useThemeColors, Typography, Palette } from '../../constants/theme';
-import { useThemeStore } from '../../stores/themeStore';
 
 export default function TabLayout() {
-  const router = useRouter();
   const Colors = useThemeColors();
-  const { isDarkMode } = useThemeStore();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: styles.tabBar,
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingTop: Platform.OS === 'android' ? 14 : 14,
-          paddingBottom: 0,
-        },
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarLabelStyle: styles.tabBarLabel,
         tabBarBackground: () => (
           <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
         ),
@@ -39,12 +32,6 @@ export default function TabLayout() {
           fontSize: 16,
           fontFamily: Typography.fonts.display,
         },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontFamily: Typography.fonts.medium,
-          marginTop: -4,
-          marginBottom: 4,
-        },
       }}>
       <Tabs.Screen
         name="index"
@@ -52,7 +39,7 @@ export default function TabLayout() {
           title: 'Painel',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
           ),
           tabBarAccessibilityLabel: 'Painel principal',
         }}
@@ -62,7 +49,7 @@ export default function TabLayout() {
         options={{
           title: 'Fiscal',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={22} color={color} />
           ),
           tabBarAccessibilityLabel: 'Gestão fiscal',
         }}
@@ -72,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: 'Clientes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color} />
           ),
           tabBarAccessibilityLabel: 'Gestão de clientes',
         }}
@@ -82,44 +69,21 @@ export default function TabLayout() {
         options={{
           title: 'IA',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.aiIcon, focused && { backgroundColor: Colors.primary, elevation: 5 }]}>
-              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={28} color={focused ? '#FFF' : color} />
+            <View style={[styles.aiIcon, focused && { backgroundColor: Colors.primary }]}>
+              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={20} color={focused ? '#FFF' : color} />
             </View>
           ),
           tabBarAccessibilityLabel: 'Assistente de inteligência artificial',
         }}
       />
-      <Tabs.Screen
-        name="opportunities"
-        options={{
-          title: 'Oportunidades',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'rocket' : 'rocket-outline'} size={26} color={color} />
-          ),
-          tabBarAccessibilityLabel: 'Oportunidades e licitações',
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Finanças',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={26} color={color} />
-          ),
-          tabBarAccessibilityLabel: 'Financeiro',
-        }}
-      />
-      {/* Escondidos */}
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Ajustes',
-          tabBarItemStyle: { display: 'none' },
-        }}
-      />
-      <Tabs.Screen name="schedule" options={{ title: 'Agenda', headerShown: false, tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="catalog" options={{ title: 'Catálogo', headerShown: false, tabBarItemStyle: { display: 'none' } }} />
-      <Tabs.Screen name="pos" options={{ tabBarItemStyle: { display: 'none' } }} />
+
+      {/* Telas acessíveis pelo dashboard, sem aparecer na tab bar */}
+      <Tabs.Screen name="two" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      <Tabs.Screen name="opportunities" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      <Tabs.Screen name="schedule" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      <Tabs.Screen name="catalog" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      <Tabs.Screen name="pos" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
     </Tabs>
   );
 }
@@ -127,24 +91,31 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderRadius: 32,
-    height: 60,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    elevation: 10,
-    overflow: 'hidden',
-    paddingBottom: 0,
-    paddingTop: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    height: Platform.OS === 'ios' ? 88 : 64,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
   },
-  aiIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  tabBarItem: {
     justifyContent: 'center',
     alignItems: 'center',
-  }
+    gap: 4,
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    fontFamily: Typography.fonts.medium,
+    marginTop: 0,
+  },
+  aiIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

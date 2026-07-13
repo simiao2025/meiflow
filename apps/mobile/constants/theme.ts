@@ -1,11 +1,11 @@
 // ============================================================
-// MEIFlow Elite Design System — High-End "Obsidian & Gold"
-// Inspired by Premium Fintechs, Black Cards, and Agency Design.
+// MEIFlow Design System — "Trust & Clarity"
+// Fintech-grade visual identity for MEI users.
 // ============================================================
 
 const DarkPalette = {
-  black: '#050505',
-  navyDeep: '#0A0A0A',
+  black: '#0F1117',
+  navyDeep: '#141620',
   white: '#FFFFFF',
   
   gold: {
@@ -16,12 +16,18 @@ const DarkPalette = {
     900: '#713F12',
   },
   
-  glass: 'rgba(255, 255, 255, 0.04)',
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderStrong: 'rgba(255, 255, 255, 0.15)',
+  blue: {
+    400: '#60A5FA',
+    500: '#3B82F6',
+    600: '#2563EB',
+  },
   
-  accent: '#EAB308',
-  secondary: '#A1A1AA',
+  glass: 'rgba(255, 255, 255, 0.04)',
+  border: 'rgba(255, 255, 255, 0.06)',
+  borderStrong: 'rgba(255, 255, 255, 0.12)',
+  
+  accent: '#3B82F6',
+  secondary: '#94A3B8',
   warning: '#F59E0B',
   success: '#22C55E',
   destructive: '#EF4444',
@@ -31,17 +37,17 @@ export const Palette = DarkPalette;
 
 const DarkColors = {
   bg: DarkPalette.black,
-  bgCard: '#121212',
-  bgInner: '#18181B',
+  bgCard: '#1A1D27',
+  bgInner: '#242836',
   
-  primary: DarkPalette.gold[500],
-  primaryLight: DarkPalette.gold[400],
-  primaryMuted: 'rgba(234, 179, 8, 0.15)',
+  primary: DarkPalette.blue[500],
+  primaryLight: DarkPalette.blue[400],
+  primaryMuted: 'rgba(59, 130, 246, 0.12)',
   secondary: DarkPalette.secondary,
   
-  text: '#F8FAFC',
-  textSecondary: '#A1A1AA',
-  textMuted: '#71717A',
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
   
   border: DarkPalette.border,
   borderStrong: DarkPalette.borderStrong,
@@ -75,5 +81,3 @@ export const Typography = {
     tiny: 11,
   }
 };
-
-
