@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 security_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
-    request: Request | None = None,
 ) -> str:
     """Extrai o user_id do JWT (via Supabase Auth) ou X-User-Id header (fallback interno)."""
     if credentials:
@@ -43,14 +43,13 @@ async def get_current_user_id(
         except Exception as e:
             logger.warning(f"Falha ao validar JWT: {e}")
 
-    if request:
-        internal_key = request.headers.get("X-Internal-Key", "")
-        user_id_header = request.headers.get("X-User-Id", "")
-        if internal_key and user_id_header:
-            expected_key = getattr(settings, "INTERNAL_API_KEY", "") or ""
-            if expected_key and internal_key == expected_key:
-                logger.warning(f"Internal key auth used for user {user_id_header[:8]}... — migrate to JWT")
-                return user_id_header
+    internal_key = request.headers.get("X-Internal-Key", "")
+    user_id_header = request.headers.get("X-User-Id", "")
+    if internal_key and user_id_header:
+        expected_key = getattr(settings, "INTERNAL_API_KEY", "") or ""
+        if expected_key and internal_key == expected_key:
+            logger.warning(f"Internal key auth used for user {user_id_header[:8]}... — migrate to JWT")
+            return user_id_header
 
     raise HTTPException(
         status_code=401,
