@@ -114,9 +114,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Ajustes',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={20} color={color} />
-          ),
+          tabBarItemStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen name="schedule" options={{ title: 'Agenda', headerShown: false, tabBarItemStyle: { display: 'none' } }} />
