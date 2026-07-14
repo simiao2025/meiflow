@@ -99,7 +99,9 @@ export default function RootLayout() {
             ]
           );
         }
-      } catch {}
+      } catch (e) {
+        console.warn('[OTA Update] Falha ao verificar atualização:', e);
+      }
     };
     checkUpdate();
   }, []);

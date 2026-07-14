@@ -347,29 +347,30 @@ export default function SettingsScreen() {
              if (pairingStatus !== 'polling') setPairingModalVisible(false);
           }}
         >
-<KeyboardAvoidingView 
-             style={{ flex: 1 }}
-             behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
-           >
-             <ScrollView 
-               style={{ flex: 1 }}
-               contentContainerStyle={{ flexGrow: 1 }}
-               keyboardShouldPersistTaps="handled"
-               showsVerticalScrollIndicator={false}
-             >
-             <View style={styles.modalContent}>
-             <View style={styles.modalHeader}>
-               <Text style={styles.modalTitle}>Conectar WhatsApp</Text>
-               {pairingStatus !== 'polling' && (
-                 <TouchableOpacity onPress={() => setPairingModalVisible(false)}>
-                   <Ionicons name="close" size={24} color="#94A3B8" />
-                 </TouchableOpacity>
-               )}
-             </View>
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          >
+            <ScrollView 
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={[styles.modalContent, { backgroundColor: Colors.bgCard }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: Colors.text }]}>Conectar WhatsApp</Text>
+                  {pairingStatus !== 'polling' && (
+                    <TouchableOpacity onPress={() => setPairingModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+                </View>
              
              {pairingStatus === 'idle' || pairingStatus === 'loading' ? (
                <>
-                 <Text style={styles.modalLabel}>Seu Número (com DDD)</Text>
+                 <Text style={[styles.modalLabel, { color: Colors.text }]}>Seu Número (com DDD)</Text>
                 <TextInput
                   style={[styles.modalInput, { backgroundColor: Colors.bg, borderColor: Colors.borderStrong, color: Colors.text }]}
                   placeholder="5511999999999"
@@ -378,7 +379,7 @@ export default function SettingsScreen() {
                   onChangeText={setWhatsappNumber}
                   keyboardType="numeric"
                 />
-                <Text style={styles.modalHint}>
+                <Text style={[styles.modalHint, { color: Colors.textMuted }]}>
                   Digite apenas números, incluindo o código do país (ex: 55) e o DDD.
                 </Text>
 
@@ -396,22 +397,22 @@ export default function SettingsScreen() {
               </>
             ) : pairingStatus === 'polling' ? (
               <View style={styles.pairingContainer}>
-                <Text style={styles.pairingInstruction}>Abra a notificação no seu WhatsApp e digite o código abaixo:</Text>
+                <Text style={[styles.pairingInstruction, { color: Colors.text }]}>Abra a notificação no seu WhatsApp e digite o código abaixo:</Text>
                 <View style={[styles.codeBox, { backgroundColor: Colors.bg, borderColor: Colors.primary }]}>
                   <Text style={[styles.codeText, { color: Colors.text }]}>{pairingCode}</Text>
                 </View>
                 <View style={styles.pollingIndicator}>
                   <ActivityIndicator color={Colors.primary} size="small" />
-                  <Text style={styles.pollingText}>Aguardando confirmação no celular...</Text>
+                  <Text style={[styles.pollingText, { color: Colors.textSecondary }]}>Aguardando confirmação no celular...</Text>
                 </View>
               </View>
             ) : (
               <View style={styles.pairingContainer}>
                 <Ionicons name="checkmark-circle" size={80} color="#25D366" />
-                <Text style={[styles.modalTitle, { marginTop: 16 }]}>Conectado!</Text>
-                <Text style={[styles.modalHint, { textAlign: 'center' }]}>Seu robô de IA agora está integrado ao seu WhatsApp.</Text>
+                <Text style={[styles.modalTitle, { marginTop: 16, color: Colors.text }]}>Conectado!</Text>
+                <Text style={[styles.modalHint, { textAlign: 'center', color: Colors.textMuted }]}>Seu robô de IA agora está integrado ao seu WhatsApp.</Text>
               </View>
-)}
+            )}
            </View>
            </ScrollView>
            </KeyboardAvoidingView>

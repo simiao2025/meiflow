@@ -166,7 +166,7 @@ export default function CatalogScreen() {
           <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
           <KeyboardAvoidingView
             style={{ flex: 1, justifyContent: 'flex-end' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>

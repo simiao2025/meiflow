@@ -97,7 +97,8 @@ export default function ProfileScreen() {
       <Stack.Screen options={{ title: 'Meu Perfil', headerShown: true, headerTintColor: '#FFF', headerStyle: { backgroundColor: Colors.bg } }} />
       
       <KeyboardAvoidingView 
-        behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>

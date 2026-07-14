@@ -29,7 +29,8 @@ export default function NewBilling() {
   return (
     <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.container}>
       <KeyboardAvoidingView 
-        behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content}>
