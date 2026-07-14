@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { 
-  useFonts, 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold 
+  PlusJakartaSans_800ExtraBold
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { Platform, LogBox, Alert } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -155,7 +156,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -172,6 +173,6 @@ export default function RootLayout() {
         <Stack.Screen name="auth/change-password" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: true, headerTitle: 'Perfil', headerStyle: { backgroundColor: Colors.bg }, headerTintColor: Colors.text }} />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }

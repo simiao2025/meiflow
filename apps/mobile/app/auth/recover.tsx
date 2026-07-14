@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Alert, ImageBackground,
+  Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RecoverPasswordScreen() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -86,11 +87,14 @@ export default function RecoverPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ImageBackground source={require('../../assets/images/login_bg.jpg')} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-      <LinearGradient colors={['rgba(15, 23, 42, 0.6)', 'rgba(15, 23, 42, 0.95)']} style={StyleSheet.absoluteFillObject} />
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={[Colors.bg, Colors.bgInner]} style={StyleSheet.absoluteFillObject} />
 
-      <KeyboardAvoidingView behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300} style={styles.content}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        style={styles.content}
+      >
         <View style={styles.cardContainer}>
           <View style={styles.glassCard}>
             <View style={styles.header}>
@@ -190,12 +194,12 @@ export default function RecoverPasswordScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
+  container: { flex: 1, backgroundColor: Colors.bg },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   cardContainer: { width: '100%', maxWidth: 400 },
   glassCard: {
@@ -216,8 +220,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.6)', borderRadius: 16,
     marginBottom: 16, paddingHorizontal: 16, height: 56, justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(51, 65, 85, 0.4)',
+    overflow: 'hidden',
   },
-  input: { flex: 1, color: '#F1F5F9', fontSize: 16 },
+  input: { flex: 1, color: '#F1F5F9', fontSize: 16, maxWidth: '100%' },
   actionButton: {
     backgroundColor: Colors.primary, height: 56, borderRadius: 16,
     justifyContent: 'center', alignItems: 'center', marginTop: 8,

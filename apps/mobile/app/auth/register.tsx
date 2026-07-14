@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Palette } from '../../constants/theme';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Linking from 'expo-linking';
 
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
@@ -78,12 +80,17 @@ export default function RegisterScreen() {
   };
 
   return (
-    <LinearGradient colors={[Colors.bg, Colors.bgInner]} style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={[Colors.bg, Colors.bgInner]} style={StyleSheet.absoluteFillObject} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         style={styles.content}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={[styles.backButton, { top: insets.top + 16 }]}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={24} color="#F8FAFC" />
         </TouchableOpacity>
 
@@ -177,7 +184,7 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </SafeAreaView>
   );
 }
 
@@ -192,11 +199,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
-    paddingTop: 80, // Espaço para o backButton
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
     left: 24,
     zIndex: 10,
   },
@@ -227,6 +232,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderWidth: 1,
     borderColor: 'rgba(51, 65, 85, 0.5)',
+    overflow: 'hidden',
   },
   inputIcon: {
     marginRight: 12,
@@ -235,6 +241,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#F1F5F9',
     fontSize: 16,
+    maxWidth: '100%',
   },
   registerButton: {
     backgroundColor: Colors.primary,

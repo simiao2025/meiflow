@@ -1,32 +1,27 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
   Image,
-  Dimensions,
   ScrollView
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useThemeColors } from '../../constants/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width, height } = Dimensions.get('window');
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
-  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,19 +72,18 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
-      {/* Camada de Gradiente Premium */}
-      <LinearGradient 
-        colors={[Colors.bg, Colors.bgInner]} 
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[Colors.bg, Colors.bgInner]}
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -160,7 +154,7 @@ export default function LoginScreen() {
         </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -173,7 +167,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    paddingHorizontal: 24,
   },
   scrollContent: {
     flexGrow: 1,
@@ -243,6 +237,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
     height: 56,
     borderWidth: 1,
     borderColor: 'rgba(51, 65, 85, 0.4)',
+    overflow: 'hidden',
   },
   inputIcon: {
     marginRight: 12,
@@ -251,6 +246,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flex: 1,
     color: '#F1F5F9',
     fontSize: 16,
+    maxWidth: '100%',
     ...Platform.select({
       web: {
         outlineStyle: 'none',

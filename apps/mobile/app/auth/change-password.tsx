@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
-  ImageBackground,
   ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,6 +17,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ChangePasswordScreen() {
   const [password, setPassword] = useState('');
@@ -78,13 +78,14 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient 
-        colors={['#0F172A', '#1E293B']} 
-        style={styles.gradient}
-      >
-        <KeyboardAvoidingView 
-          behavior='padding' keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -300}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={[Colors.bg, Colors.bgInner]}
+        style={StyleSheet.absoluteFillObject}
+      />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           style={styles.content}
         >
           <ScrollView 
@@ -157,16 +158,12 @@ export default function ChangePasswordScreen() {
           </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  gradient: {
     flex: 1,
   },
   content: {
@@ -225,6 +222,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderWidth: 1,
     borderColor: 'rgba(51, 65, 85, 0.5)',
+    overflow: 'hidden',
   },
   inputIcon: {
     marginRight: 12,
@@ -233,6 +231,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#F1F5F9',
     fontSize: 16,
+    maxWidth: '100%',
   },
   button: {
     backgroundColor: Colors.primary,
