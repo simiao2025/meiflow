@@ -40,11 +40,9 @@ export function useClients() {
     let clientLat: number | null = null;
     let clientLng: number | null = null;
 
+    // Tentativa 1: Endereço completo via Expo (Apple/Google)
     try {
-      let geocoded = await Location.geocodeAsync(formattedAddress);
-      if (!geocoded || geocoded.length === 0) {
-        geocoded = await Location.geocodeAsync(`${city} - ${state}`);
-      }
+      const geocoded = await Location.geocodeAsync(formattedAddress);
       if (geocoded && geocoded.length > 0) {
         clientLat = geocoded[0].latitude;
         clientLng = geocoded[0].longitude;
@@ -53,33 +51,48 @@ export function useClients() {
       console.warn('Expo Geocoding failed, trying OSM:', geoError);
     }
 
+    // Tentativa 2: OpenStreetMap Nominatim com endereço completo
     if (!clientLat || !clientLng) {
       try {
         const query = encodeURIComponent(formattedAddress);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=br`, {
           headers: { 'User-Agent': 'MEIFlowApp/1.0' }
         });
         const data = await response.json();
-        
+
         if (data && data.length > 0) {
           clientLat = parseFloat(data[0].lat);
           clientLng = parseFloat(data[0].lon);
-        } else {
-          const cityQuery = encodeURIComponent(`${city}, ${state}, Brasil`);
-          const cityRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cityQuery}&limit=1`, {
-            headers: { 'User-Agent': 'MEIFlowApp/1.0' }
-          });
-          const cityData = await cityRes.json();
-          if (cityData && cityData.length > 0) {
-            clientLat = parseFloat(cityData[0].lat);
-            clientLng = parseFloat(cityData[0].lon);
-          }
         }
       } catch (osmError) {
-        console.warn('OSM Geocoding also failed:', osmError);
+        console.warn('OSM Geocoding failed:', osmError);
       }
     }
 
+    // Tentativa 3: Busca parcial — rua + número + cidade (sem marco zero)
+    if (!clientLat || !clientLng) {
+      try {
+        const parts = formattedAddress.split(',').map((s: string) => s.trim());
+        // Pega rua + número (primeira parte) e cidade + estado
+        const streetPart = parts[0] || '';
+        const partialQuery = `${streetPart}, ${city}, ${state}, Brasil`;
+        const query = encodeURIComponent(partialQuery);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=br`, {
+          headers: { 'User-Agent': 'MEIFlowApp/1.0' }
+        });
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          clientLat = parseFloat(data[0].lat);
+          clientLng = parseFloat(data[0].lon);
+        }
+      } catch (osmError) {
+        console.warn('OSM partial geocoding failed:', osmError);
+      }
+    }
+
+    // NÃO faz fallback para marco zero da cidade — retorna null
+    // para que o app saiba que não conseguiu geocodificar o endereço específico
     return { lat: clientLat, lng: clientLng };
   };
 

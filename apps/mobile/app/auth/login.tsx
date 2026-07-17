@@ -165,14 +165,12 @@ const getStyles = (Colors: any) => StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 24,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    width: '100%',
+    alignItems: 'center',
   },
   cardContainer: {
     width: '100%',

@@ -72,8 +72,25 @@ export default function MapScreen() {
     ]);
   };
 
-  const qLat = targetCoords?.latitude ?? -23.550520;
-  const qLng = targetCoords?.longitude ?? -46.633308;
+  const qLat = targetCoords?.latitude;
+  const qLng = targetCoords?.longitude;
+
+  // Se não tem coordenadas do cliente, mostra mensagem informativa
+  if (qLat == null || qLng == null) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="location-outline" size={48} color={Colors.primary} />
+        <Text style={styles.errorText}>Coordenadas do cliente não disponíveis.</Text>
+        <Text style={[styles.errorText, { fontSize: 13, color: Colors.textSecondary, marginTop: 4 }]}>
+          O endereço ainda não foi geocodificado. Edite o cliente para atualizar a localização.
+        </Text>
+        <TouchableOpacity style={[styles.backBtn, { marginTop: 24 }]} onPress={() => router.back()}>
+          <Text style={styles.backBtnText}>Voltar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const mapHtml = `
     <!DOCTYPE html>
     <html>

@@ -63,7 +63,8 @@ export function useAssistantChat(provider: string = 'openai') {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // 90s para cold start do Render + iterações LangGraph (LLM → tools → LLM)
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       const response = await fetch(`${apiUrl}/api/v1/chat`, {
         method: 'POST',
@@ -79,10 +80,16 @@ export function useAssistantChat(provider: string = 'openai') {
       const updated = [...newMessages, aiMsg];
       setMessages(updated);
       saveChatHistory(updated);
-    } catch (e) {
-      const errorMsg = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: '⚠️ Não consegui conectar ao servidor. Verifique sua conexão e tente novamente.', isError: true };
+    } catch (e: any) {
+      let errorMsg = '⚠️ Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
+      if (e?.name === 'AbortError' || e?.message?.includes('aborted')) {
+        errorMsg = '⏳ O assistente está demorando mais que o esperado (servidor pode estar iniciando). Tente novamente em alguns segundos.';
+      } else if (e?.message?.includes('Network request failed') || e?.message?.includes('fetch')) {
+        errorMsg = '📡 Sem conexão com a internet. Verifique sua rede e tente novamente.';
+      }
+      const errorEntry = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: errorMsg, isError: true };
       setFailedMsgId(userMsg.id);
-      const updated = [...newMessages, errorMsg];
+      const updated = [...newMessages, errorEntry];
       setMessages(updated);
     } finally {
       setLoading(false);

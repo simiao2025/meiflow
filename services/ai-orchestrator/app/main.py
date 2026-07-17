@@ -267,6 +267,7 @@ async def api_chat(data: ChatRequest):
         initial_state = {
             "messages": [HumanMessage(content=data.message)],
             "user_id": data.user_id,
+            "provider": data.provider,  # Provider selecionado pelo usuário no app
         }
         config = {"configurable": {"thread_id": data.thread_id}}
 
@@ -283,6 +284,7 @@ class AudioChatRequest(BaseModel):
     audio_base64: str
     user_id: str
     thread_id: str = "default"
+    provider: str | None = None  # openai, anthropic, google, groq
     return_audio: bool = True  # Se True, retorna TTS da resposta
 
 @app.post("/api/v1/chat/audio")
@@ -302,6 +304,7 @@ async def api_chat_audio(data: AudioChatRequest):
         initial_state = {
             "messages": [HumanMessage(content=transcribed_text)],
             "user_id": data.user_id,
+            "provider": data.provider,  # Provider selecionado pelo usuário
         }
         config = {"configurable": {"thread_id": data.thread_id}}
 

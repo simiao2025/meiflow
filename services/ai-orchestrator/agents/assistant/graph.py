@@ -1,4 +1,4 @@
-from typing import Annotated, List, TypedDict
+from typing import Annotated, List, Optional, TypedDict
 
 from langchain_core.messages import BaseMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -22,6 +22,7 @@ class AgentState(TypedDict):
     # O add_messages permite anexar novas mensagens ao histórico automaticamente
     messages: Annotated[List[BaseMessage], add_messages]
     user_id: str
+    provider: Optional[str]  # Provider LLM selecionado pelo usuário
 
 SYSTEM_PROMPT = (
     "Você é o MEIFlow Assistant — braço direito do Microempreendedor Individual.\n"
@@ -51,13 +52,14 @@ SYSTEM_PROMPT = (
     "- consultar_cobrancas: cobranças emitidas e status\n"
 )
 
-def create_assistant_graph():
-    # Inicializa o modelo (Multi-LLM ready)
-    model = LLMFactory.get_model()
-    # Atrela as ferramentas ao modelo
-    model_with_tools = model.bind_tools(ALL_TOOLS)
 
+def create_assistant_graph():
     async def call_model(state: AgentState):
+        # Cria o modelo dinamicamente baseado no provider do usuário
+        provider = state.get("provider")
+        model = LLMFactory.get_model(provider=provider)
+        model_with_tools = model.bind_tools(ALL_TOOLS)
+
         messages = state['messages']
         # Adiciona contexto do sistema se for a primeira mensagem
         if not any(isinstance(m, SystemMessage) for m in messages):

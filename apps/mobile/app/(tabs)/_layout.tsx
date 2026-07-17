@@ -50,6 +50,7 @@ export default function TabLayout() {
           fontFamily: Typography.fonts.display,
         },
       }}>
+      {/* === Abas visíveis na tab bar === */}
       <Tabs.Screen
         name="index"
         options={{
@@ -59,6 +60,16 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'grid' : 'grid-outline'} size={22} color={color} />
           ),
           tabBarAccessibilityLabel: 'Painel principal',
+        }}
+      />
+      <Tabs.Screen
+        name="two"
+        options={{
+          title: 'Financeiro',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={22} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Financeiro',
         }}
       />
       <Tabs.Screen
@@ -72,6 +83,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="schedule"
+        options={{
+          title: 'Agenda',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Agenda',
+        }}
+      />
+      <Tabs.Screen
         name="clients"
         options={{
           title: 'Clientes',
@@ -79,6 +100,26 @@ export default function TabLayout() {
             <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color} />
           ),
           tabBarAccessibilityLabel: 'Gestão de clientes',
+        }}
+      />
+      <Tabs.Screen
+        name="opportunities"
+        options={{
+          title: 'Oportunidades',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={22} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Oportunidades',
+        }}
+      />
+      <Tabs.Screen
+        name="pos"
+        options={{
+          title: 'Vendas',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'cart' : 'cart-outline'} size={22} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Ponto de venda',
         }}
       />
       <Tabs.Screen
@@ -93,17 +134,22 @@ export default function TabLayout() {
           tabBarAccessibilityLabel: 'Assistente de inteligência artificial',
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Ajustes',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={22} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Configurações',
+        }}
+      />
 
-      {/* Telas acessíveis pelo dashboard, sem aparecer na tab bar */}
-      <Tabs.Screen name="two" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
-      <Tabs.Screen name="opportunities" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
-      <Tabs.Screen name="settings" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
+      {/* === Sub-rotas de settings (sem tab bar) === */}
       <Tabs.Screen name="settings/bank-accounts" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
       <Tabs.Screen name="settings/change-password" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
       <Tabs.Screen name="settings/payments" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
-      <Tabs.Screen name="schedule" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
       <Tabs.Screen name="catalog" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
-      <Tabs.Screen name="pos" options={{ tabBarItemStyle: { display: 'none' }, headerShown: false }} />
     </Tabs>
   );
 }
@@ -112,17 +158,20 @@ const styles = StyleSheet.create({
   tabBarItem: {
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    paddingHorizontal: 2,
+    minWidth: 0,
+    flex: 1,
   },
   tabBarLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Typography.fonts.medium,
     marginTop: 0,
   },
   aiIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
