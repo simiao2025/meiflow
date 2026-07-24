@@ -106,6 +106,7 @@ export default function TabLayout() {
         name="opportunities"
         options={{
           title: 'Oportunidades',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'briefcase' : 'briefcase-outline'} size={22} color={color} />
           ),
