@@ -129,8 +129,6 @@ const api = {
   },
 };
 
-import { supabase } from './supabase';
-
 export const financialService = {
   getBalance: async (userId: string) => {
     try {
