@@ -96,6 +96,50 @@ export function useAssistantChat(provider: string = 'openai') {
     }
   };
 
+  const sendAudio = async (base64Audio: string) => {
+    if (loading) return;
+    setLoading(true);
+    setFailedMsgId(null);
+
+    // Adiciona uma mensagem temporária
+    const tempId = Date.now().toString();
+    const tempUserMsg = { id: tempId, role: 'user' as const, content: '🎤 Processando áudio...' };
+    const newMessages = [...messagesRef.current, tempUserMsg];
+    setMessages(newMessages);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+      const response = await fetch(`${apiUrl}/api/v1/chat/audio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true' },
+        body: JSON.stringify({ audio_base64: base64Audio, user_id: user?.id, provider }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+      
+      const userMsg = { id: tempId, role: 'user' as const, content: data.transcription || '🎤 Áudio' };
+      const aiContent = data?.response || 'Desculpe, não consegui processar sua solicitação.';
+      const aiMsg = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: aiContent, audioUri: data.audio_base64 };
+      
+      const updated = [...messagesRef.current.filter(m => m.id !== tempId), userMsg, aiMsg];
+      setMessages(updated);
+      saveChatHistory(updated);
+    } catch (e: any) {
+      let errorMsg = '⚠️ Erro ao enviar áudio. Verifique sua conexão.';
+      if (e?.name === 'AbortError' || e?.message?.includes('aborted')) errorMsg = '⏳ Tempo excedido. O servidor demorou muito.';
+      const errorEntry = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: errorMsg, isError: true };
+      setFailedMsgId(tempId);
+      const updated = [...messagesRef.current, errorEntry];
+      setMessages(updated);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const retryLastMessage = useCallback(() => {
     if (!failedMsgId) return;
     const failedMsg = messagesRef.current.find(m => m.id === failedMsgId);
@@ -114,5 +158,5 @@ export function useAssistantChat(provider: string = 'openai') {
     } catch (_) {}
   };
 
-  return { messages, loading, failedMsgId, sendMessage, retryLastMessage, clearChat };
+  return { messages, loading, failedMsgId, sendMessage, sendAudio, retryLastMessage, clearChat };
 }

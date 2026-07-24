@@ -33,7 +33,7 @@ export default function AssistantScreen() {
   const [recordingUI, setRecordingUI] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  const { messages, loading, failedMsgId, sendMessage, retryLastMessage, clearChat } = useAssistantChat(selectedProvider);
+  const { messages, loading, failedMsgId, sendMessage, sendAudio, retryLastMessage, clearChat } = useAssistantChat(selectedProvider);
 
   const recorder = useAudioRecorder(Audio.RecordingPresets.LOW_QUALITY);
   const player = useAudioPlayer('');
@@ -89,16 +89,10 @@ export default function AssistantScreen() {
   const processAudio = async (uri: string) => {
     try {
       const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' as any });
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/chat/audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
-        body: JSON.stringify({ audio_base64: base64Audio, user_id: user?.id, provider: selectedProvider }),
-      });
-      const data = await response.json();
-      // Add audio response to messages
-      const assistantMsgId = Date.now().toString();
-      sendMessage(data?.transcription || 'Áudio processado');
-    } catch (e) {}
+      await sendAudio(base64Audio);
+    } catch (e) {
+      console.error('Erro ao ler áudio do filesystem', e);
+    }
   };
 
   const playAudio = async (base64: string, id: string) => {

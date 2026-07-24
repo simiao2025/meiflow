@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -6,16 +6,16 @@ import {
   ScrollView, 
   TouchableOpacity, 
   FlatList,
-  Dimensions,
   ActivityIndicator,
   Linking,
   RefreshControl,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { Palette, Typography, useThemeColors } from '../../constants/theme';
 import { creditService, alertsService, procurementService } from '../../services/api';
-
-const { width } = Dimensions.get('window');
+import { BlurView } from 'expo-blur';
 
 type Category = 'credit' | 'procurement' | 'legal';
 
@@ -36,23 +36,28 @@ export default function OpportunitiesScreen() {
         <Text style={styles.headerTitle}>Oportunidades</Text>
       </View>
 
-      <View style={styles.categoryBar}>
-        {categories.map((cat) => (
-          <TouchableOpacity 
-            key={cat.id}
-            style={[styles.categoryItem, activeCategory === cat.id && styles.categoryItemActive]}
-            onPress={() => setActiveCategory(cat.id as Category)}
-          >
-            <Ionicons 
-              name={cat.icon as any} 
-              size={20} 
-              color={activeCategory === cat.id ? '#FFF' : Colors.textSecondary} 
-            />
-            <Text style={[styles.categoryLabel, activeCategory === cat.id && styles.categoryLabelActive]}>
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+        <View style={styles.categoryPillContainer}>
+          {categories.map((cat) => (
+            <TouchableOpacity 
+              key={cat.id}
+              style={[styles.categoryItem, activeCategory === cat.id && styles.categoryItemActive]}
+              onPress={() => setActiveCategory(cat.id as Category)}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={cat.icon as any} 
+                size={16} 
+                color={activeCategory === cat.id ? '#FFF' : Colors.textSecondary} 
+              />
+              {activeCategory === cat.id && (
+                <Text style={styles.categoryLabelActive}>
+                  {cat.label}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {activeCategory === 'credit' && <CreditSection />}
@@ -88,7 +93,11 @@ function CreditSection() {
     setLoading(false);
   }, [filter]);
 
-  useEffect(() => { loadData(); }, [filter]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -98,8 +107,7 @@ function CreditSection() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Filtros */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingRight: 24 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingRight: 40 }}>
         {filters.map(f => (
           <TouchableOpacity
             key={f.key}
@@ -151,8 +159,11 @@ function CreditSection() {
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name="card-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>Nenhuma oferta de crédito encontrada.</Text>
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons name="card-outline" size={48} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyText}>Nenhuma oferta no momento</Text>
+              <Text style={styles.emptySubText}>Tente ajustar os filtros ou retorne mais tarde.</Text>
             </View>
           )}
         />
@@ -177,14 +188,17 @@ function ProcurementSection() {
     setLoading(true);
     const result = await procurementService.getTenders(pg);
     
-    // A API PNCP pode retornar formatos variados, vamos tratar
     const items = result?.data || result || [];
     setTenders(Array.isArray(items) ? items : []);
     setTotalPages(result?.totalPaginas || 1);
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(page); }, [page]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData(page);
+    }, [page, loadData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -194,16 +208,12 @@ function ProcurementSection() {
   };
 
   const formatDate = (dateStr: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     try {
       return new Date(dateStr).toLocaleDateString('pt-BR');
     } catch { return dateStr; }
   };
 
   const formatCurrency = (value: number) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     try {
       return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     } catch { return `R$ ${value}`; }
@@ -211,7 +221,6 @@ function ProcurementSection() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Paginação */}
       <View style={styles.paginationRow}>
         <TouchableOpacity 
           style={[styles.pageBtn, page <= 1 && { opacity: 0.3 }]} 
@@ -220,7 +229,9 @@ function ProcurementSection() {
         >
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.pageInfo}>Página {page} de {totalPages}</Text>
+        <View style={styles.pageInfoBadge}>
+          <Text style={styles.pageInfo}>Página {page} de {totalPages}</Text>
+        </View>
         <TouchableOpacity 
           style={[styles.pageBtn, page >= totalPages && { opacity: 0.3 }]} 
           onPress={() => page < totalPages && setPage(p => p + 1)} 
@@ -241,8 +252,8 @@ function ProcurementSection() {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.opportunityCard} activeOpacity={0.8}>
               <View style={styles.cardHeader}>
-                <View style={[styles.bankLogo, { backgroundColor: Colors.primaryMuted }]}>
-                  <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
+                <View style={[styles.bankLogo, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                  <Ionicons name="business" size={24} color="#F59E0B" />
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardTitle} numberOfLines={2}>
@@ -254,13 +265,13 @@ function ProcurementSection() {
                 </View>
               </View>
               <View style={styles.cardFooter}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.footerLabel}>Valor Est.</Text>
                   <Text style={styles.footerValue}>
                     {item?.valorTotalEstimado ? formatCurrency(item.valorTotalEstimado) : 'N/I'}
                   </Text>
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.footerLabel}>Publicação</Text>
                   <Text style={styles.footerValue}>
                     {item?.dataPublicacaoPncp ? formatDate(item.dataPublicacaoPncp) : '—'}
@@ -276,9 +287,11 @@ function ProcurementSection() {
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>Nenhuma licitação encontrada.</Text>
-              <Text style={styles.emptySubText}>Verifique sua conexão com a internet.</Text>
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons name="search-outline" size={48} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyText}>Nenhuma licitação encontrada</Text>
+              <Text style={styles.emptySubText}>Tente buscar novamente em alguns minutos.</Text>
             </View>
           )}
         />
@@ -313,7 +326,11 @@ function LegalSection() {
     setLoading(false);
   }, [filter]);
 
-  useEffect(() => { loadData(); }, [filter]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -322,19 +339,17 @@ function LegalSection() {
   };
 
   const getImpactColor = (impact: string) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     switch (impact) {
       case 'Crítica': return '#EF4444';
       case 'Alta': return '#F59E0B';
-      case 'Média': return Colors.primaryLight;
+      case 'Média': return '#3B82F6';
       default: return '#6B7280';
     }
   };
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingRight: 24 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingRight: 40 }}>
         {filters.map(f => (
           <TouchableOpacity
             key={f.key}
@@ -362,25 +377,32 @@ function LegalSection() {
             >
               <View style={[styles.impactIndicator, { backgroundColor: getImpactColor(item.impact) }]} />
               <View style={styles.newsContent}>
-                <Text style={styles.newsTitle}>{item.title}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Text style={styles.newsTitle}>{item.title}</Text>
+                </View>
                 {item.summary ? <Text style={styles.newsSummary} numberOfLines={2}>{item.summary}</Text> : null}
                 <View style={styles.newsFooter}>
+                  <View style={styles.newsSourcePill}>
+                    <Text style={styles.newsSource}>{item.source || 'Governo'}</Text>
+                  </View>
                   <Text style={styles.newsDate}>
-                    {item.published_at ? new Date(item.published_at).toLocaleDateString('pt-BR') : '—'}
+                    {item.published_at ? new Date(item.published_at).toLocaleDateString('pt-BR') : 'Hoje'}
                   </Text>
-                  {item.source ? <Text style={styles.newsSource}>• {item.source}</Text> : null}
-                  <Text style={[styles.newsImpact, { color: getImpactColor(item.impact) }]}>
-                    {item.impact}
-                  </Text>
+                  <View style={[styles.impactBadge, { backgroundColor: `${getImpactColor(item.impact)}20` }]}>
+                    <Text style={[styles.newsImpact, { color: getImpactColor(item.impact) }]}>
+                      {item.impact}
+                    </Text>
+                  </View>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#475569" />
             </TouchableOpacity>
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name="newspaper-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>Nenhum alerta encontrado.</Text>
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons name="newspaper-outline" size={48} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyText}>Nenhuma novidade radar</Text>
             </View>
           )}
         />
@@ -391,56 +413,81 @@ function LegalSection() {
 
 const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Palette.black },
-  header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 12 },
-  headerTitle: { fontSize: 24, fontFamily: Typography.fonts.display, color: Colors.text },
+  header: { paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 24 },
+  headerTitle: { fontSize: 32, fontFamily: Typography.fonts.display, color: Colors.text, letterSpacing: -0.5 },
 
-  categoryBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: Palette.navyDeep, borderBottomWidth: 1, borderBottomColor: Palette.border },
-  categoryItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12, marginHorizontal: 4 },
-  categoryItemActive: { backgroundColor: Colors.primary },
-  categoryLabel: { fontSize: 12, fontFamily: Typography.fonts.display, color: Colors.textSecondary, marginLeft: 6 },
-  categoryLabelActive: { color: '#FFF' },
+  categoryPillContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 24, 
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  categoryItem: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderRadius: 18, 
+    gap: 8,
+  },
+  categoryItemActive: { 
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  categoryLabelActive: { color: '#FFF', fontSize: 13, fontFamily: Typography.fonts.display },
 
-  filterRow: { paddingLeft: 24, paddingVertical: 16 },
-  chip: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: '#334155', marginRight: 10 },
-  chipActive: { backgroundColor: Colors.primaryMuted, borderColor: Colors.primary },
-  chipText: { color: Colors.textMuted, fontSize: 14, fontFamily: Typography.fonts.medium },
+  filterRow: { paddingLeft: 20, paddingVertical: 12, maxHeight: 60 },
+  chip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginRight: 10 },
+  chipActive: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: Colors.primary },
+  chipText: { color: Colors.textMuted, fontSize: 13, fontFamily: Typography.fonts.medium },
   chipTextActive: { color: Colors.text },
 
-  content: { padding: 20, paddingBottom: 150 },
+  content: { padding: 20, paddingBottom: 120 },
 
-  opportunityCard: { backgroundColor: Palette.navyDeep, borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: Palette.border },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  bankLogo: { width: 48, height: 48, borderRadius: 16, backgroundColor: Colors.primaryMuted, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  opportunityCard: { backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  bankLogo: { width: 52, height: 52, borderRadius: 16, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   cardInfo: { flex: 1 },
-  cardTitle: { fontSize: 15, fontFamily: Typography.fonts.display, color: Colors.text, lineHeight: 20 },
-  cardSub: { fontSize: 13, color: Colors.textSecondary, fontFamily: Typography.fonts.medium, marginTop: 2 },
-  cardDescription: { fontSize: 12, color: Colors.textMuted, fontFamily: Typography.fonts.medium, lineHeight: 18, marginBottom: 12 },
-  badge: { backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { color: '#10B981', fontSize: 11, fontFamily: Typography.fonts.display },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: Palette.border, paddingTop: 16 },
-  footerLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', fontFamily: Typography.fonts.medium },
-  footerValue: { fontSize: 13, fontFamily: Typography.fonts.display, color: Colors.text, marginTop: 2 },
-  applyBtn: { backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  cardTitle: { fontSize: 16, fontFamily: Typography.fonts.display, color: Colors.text, lineHeight: 22, paddingRight: 8 },
+  cardSub: { fontSize: 13, color: Colors.textSecondary, fontFamily: Typography.fonts.medium, marginTop: 4 },
+  cardDescription: { fontSize: 13, color: Colors.textMuted, fontFamily: Typography.fonts.body, lineHeight: 20, marginBottom: 16 },
+  badge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, alignSelf: 'flex-start' },
+  badgeText: { color: '#10B981', fontSize: 12, fontFamily: Typography.fonts.display },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 16, gap: 12 },
+  footerLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', fontFamily: Typography.fonts.medium, letterSpacing: 0.5 },
+  footerValue: { fontSize: 14, fontFamily: Typography.fonts.display, color: Colors.text, marginTop: 4 },
+  applyBtn: { backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 14 },
   applyBtnText: { color: '#FFF', fontSize: 13, fontFamily: Typography.fonts.display },
 
-  modalityBadge: { backgroundColor: Colors.primaryMuted, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, maxWidth: 120 },
-  modalityText: { color: Colors.primary, fontSize: 10, fontFamily: Typography.fonts.display },
+  modalityBadge: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexShrink: 1 },
+  modalityText: { color: Colors.text, fontSize: 10, fontFamily: Typography.fonts.display },
 
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 12, gap: 16 },
-  pageBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Palette.navyDeep, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Palette.border },
-  pageInfo: { color: Colors.textMuted, fontSize: 13, fontFamily: Typography.fonts.medium },
+  pageBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  pageInfoBadge: { backgroundColor: 'rgba(255,255,255,0.02)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  pageInfo: { color: Colors.text, fontSize: 13, fontFamily: Typography.fonts.medium },
 
-  newsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Palette.navyDeep, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: Palette.border },
-  impactIndicator: { width: 4, height: '80%', minHeight: 40, borderRadius: 2, marginRight: 16 },
-  newsContent: { flex: 1 },
-  newsTitle: { fontSize: 14, fontFamily: Typography.fonts.display, color: Colors.text, lineHeight: 20 },
-  newsSummary: { fontSize: 12, color: Colors.textMuted, fontFamily: Typography.fonts.medium, marginTop: 4, lineHeight: 16 },
-  newsFooter: { flexDirection: 'row', marginTop: 8, alignItems: 'center', gap: 6 },
-  newsDate: { fontSize: 11, color: Colors.textMuted, fontFamily: Typography.fonts.medium },
-  newsSource: { fontSize: 11, color: Colors.textMuted, fontFamily: Typography.fonts.medium },
-  newsImpact: { fontSize: 11, fontFamily: Typography.fonts.display, marginLeft: 'auto' },
+  newsCard: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 24, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  impactIndicator: { width: 4, borderRadius: 2, marginRight: 16 },
+  newsContent: { flex: 1, paddingVertical: 4 },
+  newsTitle: { fontSize: 15, fontFamily: Typography.fonts.display, color: Colors.text, lineHeight: 22, paddingRight: 10 },
+  newsSummary: { fontSize: 13, color: Colors.textMuted, fontFamily: Typography.fonts.body, marginTop: 6, lineHeight: 18 },
+  newsFooter: { flexDirection: 'row', marginTop: 14, alignItems: 'center', gap: 10 },
+  newsDate: { fontSize: 12, color: Colors.textMuted, fontFamily: Typography.fonts.medium },
+  newsSourcePill: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  newsSource: { fontSize: 10, color: Colors.textSecondary, fontFamily: Typography.fonts.display },
+  impactBadge: { marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  newsImpact: { fontSize: 10, fontFamily: Typography.fonts.display },
 
-  emptyState: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: Colors.textMuted, marginTop: 12, fontSize: 14, fontFamily: Typography.fonts.medium },
-  emptySubText: { color: Colors.textMuted, marginTop: 4, fontSize: 12, fontFamily: Typography.fonts.medium },
+  emptyState: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
+  emptyIconWrapper: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  emptyText: { color: Colors.text, fontSize: 18, fontFamily: Typography.fonts.display, textAlign: 'center' },
+  emptySubText: { color: Colors.textMuted, marginTop: 8, fontSize: 14, fontFamily: Typography.fonts.body, textAlign: 'center', lineHeight: 22 },
 });
