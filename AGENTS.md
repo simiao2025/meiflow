@@ -69,7 +69,8 @@
 - 🤖 **Auditoria do agente SDR de atendimento** (16 problemas identificados, pendente de correção)
 - 🆕 **Meta WhatsApp Business Cloud API (OAuth Embedded Signup)**:
   - Coexiste com Evolution Go (v3) — ambos paralelos,Evolution intacto
-  - Backend: `integrations/meta_oauth.py` (PKCE S256), `integrations/whatsapp_meta.py` (Cloud API client), `app/meta_routes.py` (5 rotas `/api/v1/crm/meta/*`)
+  - Backend: `integrations/meta_oauth.py` (PKCE S256), `integrations/whatsapp_meta.py` (Cloud API client), `app/meta_routes.py` (5 rotas OAuth/status + webhook inbound `/webhook` GET+POST)
+  - Webhook inbound: valida `X-Hub-Signature-256` (HMAC SHA256), dedup `message_id` em Redis (24h), resolve MEI por `meta_phone_number_id`, despacha texto/áudio/imagem/PDF/interactive para o mesmo `customer_app` Evolution Go, responde via Cloud API
   - State + PKCE persistidos em Redis (5 min, one-shot anti-replay)
   - Migration 00019: 8 colunas `meta_*` em `profiles` (paralelo às `evolution_*`)
   - Mobile: `services/metaAuth.ts` + card "Meta Cloud API" em Settings (botão abre dialog Meta oficial no navegador)
