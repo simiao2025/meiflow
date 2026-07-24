@@ -35,7 +35,7 @@ export default function AssistantScreen() {
 
   const { messages, loading, failedMsgId, sendMessage, retryLastMessage, clearChat } = useAssistantChat(selectedProvider);
 
-  const recorder = useAudioRecorder(Audio.RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(Audio.RecordingPresets.LOW_QUALITY);
   const player = useAudioPlayer('');
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;

@@ -85,8 +85,9 @@ export default function BankAccountsScreen() {
     }
   };
 
-  const handleConnect = async () => {
-    if (!selectedBank) return;
+  const handleConnect = async (bank: any) => {
+    if (!bank) return;
+    setSelectedBank(bank);
     setConnecting(true);
 
     try {
@@ -94,7 +95,7 @@ export default function BankAccountsScreen() {
       const response = await fetch(`${EDGE_FUNCTION_URL}/connectors/create`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ connector_id: selectedBank.id }),
+        body: JSON.stringify({ connector_id: bank.id }),
       });
       const data = await response.json();
 
@@ -103,7 +104,7 @@ export default function BankAccountsScreen() {
         if (data.redirect_url) {
           Alert.alert(
             'Autenticação Necessária',
-            `Você será redirecionado para autenticar no ${selectedBank.name}. Após autorizar, volte ao app.`,
+            `Você será redirecionado para autenticar no ${bank.name}. Após autorizar, volte ao app.`,
             [
               { text: 'Abrir Banco', onPress: () => {
                 // Em um app real, abriria WebBrowser.openAuthSessionAsync(data.redirect_url)
@@ -127,9 +128,11 @@ export default function BankAccountsScreen() {
         setSelectedBank(null);
       } else {
         Alert.alert('Erro', data.error || 'Não foi possível conectar o banco.');
+        setSelectedBank(null);
       }
     } catch (e: any) {
       Alert.alert('Erro', `Falha na conexão: ${e.message}`);
+      setSelectedBank(null);
     } finally {
       setConnecting(false);
     }
@@ -344,7 +347,7 @@ export default function BankAccountsScreen() {
               {availableBanks
                 .filter((b: any) => !connectors.some((c: any) => c.connector_id === b.id))
                 .map((bank: any) => (
-                <TouchableOpacity
+                  <TouchableOpacity
                   key={bank.id}
                   style={[
                     styles.bankItem,
@@ -353,7 +356,8 @@ export default function BankAccountsScreen() {
                       borderColor: selectedBank?.id === bank.id ? Colors.primary : Colors.borderStrong,
                     },
                   ]}
-                  onPress={() => setSelectedBank(bank)}
+                  onPress={() => handleConnect(bank)}
+                  disabled={connecting}
                 >
                   <View style={styles.bankItemLeft}>
                     <Ionicons
@@ -380,28 +384,14 @@ export default function BankAccountsScreen() {
                       </Text>
                     </View>
                   </View>
-                  {selectedBank?.id === bank.id && (
-                    <Ionicons name="checkmark-circle" size={24} color={Palette.black} />
-                  )}
+                  {selectedBank?.id === bank.id ? (
+                    <ActivityIndicator color={Palette.black} size="small" />
+                  ) : null}
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            {selectedBank && (
-              <TouchableOpacity
-                style={[styles.connectBtn, { backgroundColor: Colors.primary }]}
-                onPress={handleConnect}
-                disabled={connecting}
-              >
-                {connecting ? (
-                  <ActivityIndicator color={Palette.black} />
-                ) : (
-                  <Text style={styles.connectBtnText}>
-                    Conectar {selectedBank.institutionName || selectedBank.name}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
+
           </View>
         </View>
       )}
