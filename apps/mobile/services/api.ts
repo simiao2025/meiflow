@@ -1,8 +1,8 @@
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import { supabase } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
-const INTERNAL_KEY = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
@@ -11,14 +11,25 @@ const TIMEOUT_MS = 30000;
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 300000;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const checkConnection = async (): Promise<boolean> => {
   const state = await NetInfo.fetch();
   return state.isConnected ?? false;
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Obtém o token JWT ativo do Supabase Auth.
+ * O backend validará esse token para identificar o usuário —
+ * eliminando a necessidade de enviar user_id no payload.
+ */
+async function getAuthToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+  return session.access_token;
+}
 
 async function fetchWithRetry(
   url: string,
@@ -67,9 +78,11 @@ const api = {
       throw new Error('Sem conexão com a internet');
     }
 
+    const token = await getAuthToken();
+
     const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       headers: {
-        'X-Internal-Key': INTERNAL_KEY,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -89,10 +102,12 @@ const api = {
       throw new Error('Sem conexão com a internet');
     }
 
+    const token = await getAuthToken();
+
     const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
-        'X-Internal-Key': INTERNAL_KEY,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -263,9 +278,9 @@ export const aiFinanceService = {
       throw e;
     }
   },
-  getReconciliationSuggestions: async (userId: string) => {
+  getReconciliationSuggestions: async () => {
     try {
-      const response = await api.get(`/api/finance/reconciliations?user_id=${userId}`, false);
+      const response = await api.get('/api/finance/reconciliations', false);
       return response.suggestions || [];
     } catch (e) {
       console.error('Error fetching reconciliation suggestions:', e);

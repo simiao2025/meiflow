@@ -15,6 +15,48 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
+// ========================================================
+// SEGURANÇA: Mapeamento estrito de ações permitidas.
+// O cliente envia { action: "list_payments" }, e o servidor
+// constrói a URL da API do Asaas internamente.
+// O cliente NUNCA envia o caminho da URL diretamente.
+// ========================================================
+interface ActionConfig {
+  method: string;
+  buildPath: (params: Record<string, string>) => string;
+  requiredParams?: string[];
+}
+
+const ALLOWED_ACTIONS: Record<string, ActionConfig> = {
+  // Cobranças do usuário autenticado
+  list_payments: {
+    method: 'GET',
+    buildPath: (p) => `/payments?customer=${p.customer_id}`,
+    requiredParams: ['customer_id'],
+  },
+  get_payment: {
+    method: 'GET',
+    buildPath: (p) => `/payments/${p.payment_id}`,
+    requiredParams: ['payment_id'],
+  },
+  create_payment: {
+    method: 'POST',
+    buildPath: () => '/payments',
+  },
+  // QR Code Pix
+  get_pix_qrcode: {
+    method: 'GET',
+    buildPath: (p) => `/payments/${p.payment_id}/pixQrCode`,
+    requiredParams: ['payment_id'],
+  },
+  // Notificações / Webhooks
+  list_notifications: {
+    method: 'GET',
+    buildPath: (p) => `/payments/${p.payment_id}/notifications`,
+    requiredParams: ['payment_id'],
+  },
+};
+
 serve(async (req) => {
   const origin = req.headers.get('Origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -25,20 +67,18 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Get the Authorization JWT from the request
+    // 1. Verificar autenticação JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
     }
 
-    // 2. Initialize Supabase Client to verify the user
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // 3. Verify user authentication
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -47,35 +87,60 @@ serve(async (req) => {
       });
     }
 
-    // 4. Parse the incoming proxy request (path, method, body)
+    // 2. Parsear a requisição — agora aceita "action" em vez de "endpoint"
     const body = await req.json();
-    const { endpoint, method = 'GET', payload } = body;
+    const { action, params = {}, payload } = body;
 
-    if (!endpoint) {
-      throw new Error('Missing Asaas endpoint in request body');
+    if (!action) {
+      return new Response(
+        JSON.stringify({ error: 'Campo "action" é obrigatório. Ações válidas: ' + Object.keys(ALLOWED_ACTIONS).join(', ') }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // 5. Get the global ASAAS_API_KEY from environment variables (securely stored)
+    // 3. Validar que a ação existe no mapeamento
+    const actionConfig = ALLOWED_ACTIONS[action];
+    if (!actionConfig) {
+      return new Response(
+        JSON.stringify({ error: `Ação "${action}" não permitida. Ações válidas: ${Object.keys(ALLOWED_ACTIONS).join(', ')}` }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 4. Validar parâmetros obrigatórios
+    if (actionConfig.requiredParams) {
+      for (const param of actionConfig.requiredParams) {
+        if (!params[param]) {
+          return new Response(
+            JSON.stringify({ error: `Parâmetro obrigatório ausente: "${param}" para a ação "${action}"` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
+    // 5. Construir a URL do Asaas no servidor (NUNCA vinda do cliente)
     const asaasApiKey = Deno.env.get('ASAAS_API_KEY');
     if (!asaasApiKey) {
       throw new Error('Asaas API Key is not configured on the server');
     }
 
     const asaasUrl = Deno.env.get('ASAAS_API_URL') || 'https://sandbox.asaas.com/api/v3';
+    const asaasPath = actionConfig.buildPath(params);
 
-    // 6. Forward the request to Asaas
-    const asaasResponse = await fetch(`${asaasUrl}${endpoint}`, {
-      method,
+    // 6. Executar a chamada ao Asaas
+    const asaasResponse = await fetch(`${asaasUrl}${asaasPath}`, {
+      method: actionConfig.method,
       headers: {
         'Content-Type': 'application/json',
-        'access_token': asaasApiKey, // Asaas uses access_token header
+        'access_token': asaasApiKey,
       },
-      body: payload ? JSON.stringify(payload) : undefined,
+      body: payload && actionConfig.method === 'POST' ? JSON.stringify(payload) : undefined,
     });
 
     const data = await asaasResponse.json();
 
-    // 7. Return the Asaas response back to the client
+    // 7. Retornar a resposta do Asaas ao cliente
     return new Response(JSON.stringify(data), {
       status: asaasResponse.status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,3 +153,4 @@ serve(async (req) => {
     });
   }
 });
+

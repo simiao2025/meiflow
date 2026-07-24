@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 import asyncio
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from supabase import create_client, Client
@@ -12,25 +12,23 @@ from dotenv import load_dotenv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from shared.models import Transaction, TransactionStatus
 from shared.database import supabase
-from shared.security import verify_internal_key
+from shared.security import verify_jwt
 from shared.middleware import SecurityHeadersMiddleware, CorrelationIdMiddleware
 from shared.logger import get_logger
 
 logger = get_logger("financial-service")
 
-# Inicialização com segurança e middlewares ativados
+# Inicialização — sem dependência global (JWT é injetado por rota)
 app = FastAPI(
     title="MEIFlow Financial Service",
     description="Serviço responsável pela gestão financeira e saldo do MEI",
-    version="1.1.0",
-    dependencies=[Depends(verify_internal_key)]
+    version="2.0.0",
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
 # CORS restrito — apenas origens confiáveis
-# Em produção, substituir pelas URLs reais do frontend
 ALLOWED_ORIGINS = [
     "http://localhost:8081",  # Expo dev
     "http://localhost:3000",  # Web dev alternativo
@@ -42,7 +40,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Internal-Key", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Correlation-ID"],
 )
 
 from shared.cache import redis_client
@@ -73,10 +71,11 @@ async def health_check():
     return health
 
 @app.post("/transactions")
-async def create_transaction(transaction: dict):
-    """Registra uma nova transação financeira."""
+async def create_transaction(transaction: dict, user_id: str = Depends(verify_jwt)):
+    """Registra uma nova transação financeira.
+    O user_id é extraído do JWT — nunca do payload do cliente.
+    """
     try:
-        user_id = transaction.get("user_id")
         amount = transaction.get("amount", 0)
         method = transaction.get("payment_method", "cash")
 
@@ -93,22 +92,22 @@ async def create_transaction(transaction: dict):
         response = supabase.table("transactions").insert(db_payload).execute()
         return response.data[0]
     except Exception as e:
-        logger.error(f"Erro ao criar transação para o usuário {transaction.get('user_id')}: {e}")
+        logger.error(f"Erro ao criar transação para o usuário {user_id[:8]}...: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao processar transação.")
 
-@app.get("/transactions/{user_id}", response_model=List[Transaction])
-async def get_transactions(user_id: str):
-    """Retorna o histórico de transações de um usuário."""
+@app.get("/transactions")
+async def get_transactions(user_id: str = Depends(verify_jwt)):
+    """Retorna o histórico de transações do usuário autenticado."""
     try:
         response = supabase.table("transactions").select("*").eq("user_id", user_id).execute()
         return response.data
     except Exception as e:
-        logger.error(f"Erro ao buscar transações para {user_id}: {e}")
+        logger.error(f"Erro ao buscar transações para {user_id[:8]}...: {e}")
         raise HTTPException(status_code=500, detail="Erro ao recuperar histórico financeiro.")
 
-@app.get("/balance/{user_id}")
-async def get_balance(user_id: str):
-    """Calcula o saldo real (Receitas - Despesas) do usuário."""
+@app.get("/balance")
+async def get_balance(user_id: str = Depends(verify_jwt)):
+    """Calcula o saldo real (Receitas - Despesas) do usuário autenticado."""
     try:
         response = supabase.table("transactions").select("amount, type, status").eq("user_id", user_id).execute()
         
@@ -125,9 +124,10 @@ async def get_balance(user_id: str):
                     
         return {"user_id": user_id, "balance": round(total, 2)}
     except Exception as e:
-        logger.error(f"Erro ao calcular saldo para {user_id}: {e}")
+        logger.error(f"Erro ao calcular saldo para {user_id[:8]}...: {e}")
         raise HTTPException(status_code=500, detail="Erro ao calcular saldo financeiro.")
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+

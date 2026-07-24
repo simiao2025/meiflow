@@ -30,7 +30,7 @@ export default function ReconciliationScreen() {
         setLoading(false);
         return;
       }
-      const data = await aiFinanceService.getReconciliationSuggestions(user.id);
+      const data = await aiFinanceService.getReconciliationSuggestions();
       setSuggestions(data);
     } catch (e) {
       console.error("Error fetching suggestions", e);

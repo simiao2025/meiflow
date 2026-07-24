@@ -451,7 +451,7 @@ async function handleConnectorStatus(req: Request): Promise<Response> {
     ? { errorCode: pluggyItem.errorCode, errorMessage: pluggyItem.errorMessage }
     : null
 
-  // 2. Atualizar status no banco
+  // 2. Atualizar status no banco (SEGURANÇA: sempre filtrar por user_id para evitar IDOR)
   await supabase
     .from("financial.pluggy_connectors")
     .update({
@@ -460,6 +460,7 @@ async function handleConnectorStatus(req: Request): Promise<Response> {
       updated_at: new Date().toISOString(),
     })
     .eq("item_id", item_id)
+    .eq("user_id", userId)
 
   // 3. Se login succeeded, criar/atualizar contas bancárias
   if (newStatus === "login_succeeded") {
@@ -691,6 +692,8 @@ async function handleWebhook(req: Request): Promise<Response> {
     if (eventType === "transaction/created" && itemId) {
       // Atualizações de transações são tratadas no próximo sync
       // Mas podemos marcar o connector para sync rápido
+      // NOTA: webhook não tem userId — filtrar apenas por item_id é aceitável aqui
+      // pois a autenticação é via webhook secret, não JWT de usuário
       await supabase
         .from("financial.pluggy_connectors")
         .update({ status: "updating" })

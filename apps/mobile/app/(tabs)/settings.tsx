@@ -84,14 +84,15 @@ export default function SettingsScreen() {
     }
     setPairingStatus('loading');
     try {
-      const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
       const response = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/pairing-code`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Internal-Key': internalKey
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ user_id: user?.id, phone_number: whatsappNumber })
+        body: JSON.stringify({ phone_number: whatsappNumber })
       });
       const textData = await response.text();
       let data: any = {};
@@ -124,9 +125,10 @@ export default function SettingsScreen() {
     
     pollingInterval.current = setInterval(async () => {
       try {
-        const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || '';
         const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/status/${user?.id}`, {
-          headers: { 'X-Internal-Key': internalKey }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         
@@ -210,14 +212,15 @@ export default function SettingsScreen() {
               } else if (profile?.cnpj) {
                 // Lógica de Auto-Cura para usuários antigos
                 try {
-                  const internalKey = process.env.EXPO_PUBLIC_INTERNAL_KEY || '';
+                  const { data: { session: s } } = await supabase.auth.getSession();
+                  const token = s?.access_token || '';
                   const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json',
-                      'X-Internal-Key': internalKey
+                      'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ user_id: user?.id, cnpj: profile.cnpj })
+                    body: JSON.stringify({ cnpj: profile.cnpj })
                   });
                   const textData = await res.text();
                   let data: any = {};
