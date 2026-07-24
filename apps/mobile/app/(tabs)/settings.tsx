@@ -23,6 +23,7 @@ import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useThemeColors, Palette, Typography } from '../../constants/theme';
+import { startMetaOauth, openMetaDialog, pollMetaStatus, disconnectMeta } from '../../services/metaAuth';
 
 const PRIVACY_POLICY_URL = 'https://meiflow.com.br/privacidade';
 const TERMS_OF_USE_URL = 'https://meiflow.com.br/termos';
@@ -41,6 +42,9 @@ export default function SettingsScreen() {
   const [pairingStatus, setPairingStatus] = useState<'idle' | 'loading' | 'polling' | 'connected'>('idle');
   const [loading, setLoading] = useState(false);
    const pollingInterval = useRef<number | null>(null);
+
+  // Meta Cloud API State
+  const [metaLoading, setMetaLoading] = useState(false);
 
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
 
@@ -148,6 +152,59 @@ export default function SettingsScreen() {
     }, 5000);
   };
 
+  const handleMetaConnect = async () => {
+    if (!user?.id) {
+      Alert.alert('Erro', 'Usuário não identificado. Reabra o app.');
+      return;
+    }
+    setMetaLoading(true);
+    try {
+      // 1. Pedir auth_url ao backend (OAuth PKCE gerado no servidor)
+      const { auth_url: authUrl } = await startMetaOauth(user.id);
+
+      // 2. Abrir dialog Meta no navegador do sistema
+      await openMetaDialog(authUrl);
+
+      // 3. Polling de status no backend até "connected" (timeout 60s)
+      const result = await pollMetaStatus(user.id, 2000, 60000);
+      await refreshProfile();
+      Alert.alert(
+        'Meta conectada!',
+        `Seu WhatsApp Business Cloud API está ativo${result.phone_number ? ` (${result.phone_number})` : ''}.`
+      );
+    } catch (e: any) {
+      Alert.alert('Erro na conexão Meta', e?.message || 'Falha inesperada. Tente novamente.');
+    } finally {
+      setMetaLoading(false);
+    }
+  };
+
+  const handleMetaDisconnect = () => {
+    Alert.alert(
+      'Desconectar Meta Cloud API',
+      'O robô de IA deixará de usar a Meta Cloud API. O Evolution Go (v3) não será afetado.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desconectar',
+          style: 'destructive',
+          onPress: async () => {
+            setMetaLoading(true);
+            try {
+              await disconnectMeta(user?.id || '');
+              await refreshProfile();
+              Alert.alert('Desconectado', 'Meta Cloud API desativada.');
+            } catch (e: any) {
+              Alert.alert('Erro', e?.message || 'Não foi possível desconectar.');
+            } finally {
+              setMetaLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const SettingsItem = ({ icon, title, subtitle, onPress, toggle, value }: any) => (
     <TouchableOpacity 
       style={styles.item} 
@@ -237,6 +294,31 @@ export default function SettingsScreen() {
                 }
               } else {
                 Alert.alert('Atenção', 'Você precisa de um CNPJ cadastrado para ter acesso ao robô de WhatsApp.');
+              }
+            }}
+          />
+          <View style={styles.divider} />
+
+          {/* Meta WhatsApp Business Cloud API (OAuth Embedded Signup).
+              Coexiste com o Evolution Go (v3) acima — não o substitui. */}
+          <SettingsItem
+            icon="logo-facebook"
+            title="Meta Cloud API"
+            subtitle={
+              metaLoading
+                ? "🔄 Conectando..."
+                : profile?.meta_status === 'connected'
+                  ? `🟢 Conectado${profile?.meta_phone_number ? ` (${profile.meta_phone_number})` : ''}`
+                  : profile?.meta_status === 'error'
+                    ? "🔴 Erro na última tentativa"
+                    : "🔵 Conexão oficial Meta (toque para conectar)"
+            }
+            onPress={async () => {
+              if (metaLoading) return;
+              if (profile?.meta_status === 'connected') {
+                handleMetaDisconnect();
+              } else {
+                handleMetaConnect();
               }
             }}
           />

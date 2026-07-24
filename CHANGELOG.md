@@ -8,6 +8,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ## [Unreleased]
 
 ### Added
+- **Meta Cloud API**: Integração oficial Meta WhatsApp Business Cloud API via OAuth 2.0 PKCE (Embedded Signup) — coexiste com Evolution Go (v3), ambos paralelos
+- **Meta OAuth Backend**: `integrations/meta_oauth.py` (PKCE S256, build_oauth_url, exchange_code_for_token, get_waba_and_phone_number) e `integrations/whatsapp_meta.py` cliente Cloud API (text, template, image, audio, document, mark_read, download_media)
+- **Meta Routes**: `app/meta_routes.py` com `/api/v1/crm/meta/oauth/start`, `/oauth/callback`, `/status/{user_id}`, `/disconnect/{user_id}`, `/send-test`. State+PKCE persistidos em Redis (5 min, one-shot anti-replay). Callback valida `state==user_id` (anti-CSRF)
+- **Migration 00019**: `meta_waba_id`, `meta_phone_number_id`, `meta_phone_number`, `meta_access_token`, `meta_token_expires_at`, `meta_business_id`, `meta_status`, `meta_connected_at` em `profiles` (paralelo às colunas Evolution, estas intactas)
+- **Mobile Meta**: `services/metaAuth.ts` (start OAuth, open dialog via `expo-web-browser`, polling status, disconnect); `expo-auth-session` instalado
+- **Mobile UI**: Card "Meta Cloud API" em Settings > Integrações & IA, paralelo ao card Evolution Go. Botão abre o diálogo Meta oficial no navegador; callback no backend troca code por token e persiste
+- **Env**: `META_APP_ID`, `META_APP_SECRET`, `META_OAUTH_REDIRECT_URI`, `META_WEBHOOK_VERIFY_TOKEN` documentados em `services/ai-orchestrator/.env.example`
 - **LGPD Compliance**: Consentimento de termos no cadastro (checkbox obrigatório com links para Termos de Uso e Política de Privacidade)
 - **LGPD Compliance**: Aviso de tratamento de dados no onboarding (antes de salvar CPF/CNPJ)
 - **LGPD Compliance**: Função `delete_user_account()` no banco de dados (exclusão cascade com preservação fiscal de 5 anos)

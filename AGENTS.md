@@ -39,7 +39,8 @@
       │
 🔌 INTEGRAÇÕES EXTERNAS
   Gov.br · Asaas · NFS-e · Open Finance
-  Evolution Go · PNCP · BNDES · DOU
+  Evolution Go (v3) · Meta WhatsApp Cloud API (OAuth Embedded Signup)
+  PNCP · BNDES · DOU
   Google Maps · Pluggy
 ```
 
@@ -59,6 +60,20 @@
 ---
 
 ## 🔄 Últimas Mudanças (Sessão Atual)
+
+### FASE 5 — Segurança + Integração Meta Cloud API 🛡️
+- 🔒 **Auditoria de segurança de integrações (3 vulnerabilidades corrigidas)**:
+  - [CRÍTICA] Removido `EXPO_PUBLIC_INTERNAL_KEY` do mobile — agora usa apenas JWT do Supabase; `verify_jwt()` em `shared/security.py` valida token e extrai `user_id`
+  - [CRÍTICA] `asaas-proxy` refatorado: whitelist `ALLOWED_ACTIONS` (buildPath server-side) em vez de `endpoint` livre do cliente
+  - [ALTA] IDOR no `sync-bank-statements/handleConnectorStatus` corrigido: `.eq(item_id).eq(user_id, userId)` encadeado
+- 🤖 **Auditoria do agente SDR de atendimento** (16 problemas identificados, pendente de correção)
+- 🆕 **Meta WhatsApp Business Cloud API (OAuth Embedded Signup)**:
+  - Coexiste com Evolution Go (v3) — ambos paralelos,Evolution intacto
+  - Backend: `integrations/meta_oauth.py` (PKCE S256), `integrations/whatsapp_meta.py` (Cloud API client), `app/meta_routes.py` (5 rotas `/api/v1/crm/meta/*`)
+  - State + PKCE persistidos em Redis (5 min, one-shot anti-replay)
+  - Migration 00019: 8 colunas `meta_*` em `profiles` (paralelo às `evolution_*`)
+  - Mobile: `services/metaAuth.ts` + card "Meta Cloud API" em Settings (botão abre dialog Meta oficial no navegador)
+  - Token System User long-lived gravado no banco; mobile nunca o vê
 
 ### FASE 4 — Correção de Bugs Silenciosos + Dead Code Cleanup 🔧
 - 🐛 **13 bugs corrigidos**:

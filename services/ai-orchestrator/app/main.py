@@ -20,6 +20,7 @@ from shared.rate_limiter import approve_limiter, reconciliation_limiter
 from agents.assistant.graph import assistant_app
 from agents.customer.graph import customer_app
 from app.config import settings
+from app.meta_routes import router as meta_router
 from app.scheduler import start_scheduler
 from app.whatsapp_service import WhatsAppService
 from integrations.audio_service import AudioService
@@ -72,6 +73,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# Rotas Meta WhatsApp Business Cloud API (OAuth Embedded Signup + Cloud API).
+# Coexistem com os proxies Evolution Go (mantidos intactos).
+app.include_router(meta_router)
 
 @app.on_event("startup")
 async def startup_event():

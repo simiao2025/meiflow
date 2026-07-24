@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     WEBHOOK_SECRET_TOKEN: str = ""
     ASAAS_WEBHOOK_TOKEN: str = ""
 
+    # Meta WhatsApp Business Cloud API (OAuth Embedded Signup)
+    META_APP_ID: str = ""
+    META_APP_SECRET: str = ""
+    META_WEBHOOK_VERIFY_TOKEN: str = ""  # Token p/ validar webhook Meta (hub.verify_token)
+    META_OAUTH_REDIRECT_URI: str = ""   # ex: https://app.meiflow.com.br/api/v1/crm/meta/oauth/callback
+
     # Supabase
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
