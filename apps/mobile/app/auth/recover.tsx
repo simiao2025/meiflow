@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../services/supabase';
+import { useAuthStore } from '../../stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +26,7 @@ export default function RecoverPasswordScreen() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: 'mobile://auth/recover' });
       if (error) throw error;
       setStep(2);
       Alert.alert('E-mail enviado!', 'Verifique sua caixa de entrada e digite o código numérico recebido.');
@@ -42,15 +43,23 @@ export default function RecoverPasswordScreen() {
       return;
     }
     setLoading(true);
+    // Trava estado de recuperação para impedir que o _layout.tsx redirecione para (tabs) ao autenticar
+    useAuthStore.getState().setPasswordRecovery(true);
+    useAuthStore.setState({ isProfileLoaded: true });
+
     try {
       const { error } = await supabase.auth.verifyOtp({
         email: email.trim(),
         token: otp.trim(),
         type: 'recovery',
       });
-      if (error) throw error;
+      if (error) {
+        useAuthStore.getState().setPasswordRecovery(false);
+        throw error;
+      }
       setStep(3);
     } catch (err: any) {
+      useAuthStore.getState().setPasswordRecovery(false);
       Alert.alert('Erro', 'Código inválido ou expirado. Tente solicitar novamente.');
     } finally {
       setLoading(false);
@@ -73,11 +82,23 @@ export default function RecoverPasswordScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { data, error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
-      Alert.alert('Sucesso', 'Sua senha foi redefinida com sucesso! Faça login.');
+      if (data?.user?.id) {
+        await supabase
+          .from('profiles')
+          .update({
+            must_change_password: false,
+            is_temporary_password: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.user.id);
+      }
+
+      useAuthStore.getState().setPasswordRecovery(false);
       await supabase.auth.signOut();
+      Alert.alert('Sucesso', 'Sua senha foi redefinida com sucesso! Faça login.');
       router.replace('/auth/login');
     } catch (err: any) {
       Alert.alert('Erro', err?.message || 'Não foi possível redefinir a senha.');
@@ -186,7 +207,18 @@ export default function RecoverPasswordScreen() {
 
               <TouchableOpacity 
                 style={styles.backButton} 
-                onPress={() => step > 1 ? setStep((prev) => (prev - 1) as 1|2|3) : router.back()}
+                onPress={async () => {
+                  if (step === 3) {
+                    useAuthStore.getState().setPasswordRecovery(false);
+                    await supabase.auth.signOut();
+                    setStep(2);
+                  } else if (step === 2) {
+                    setStep(1);
+                  } else {
+                    useAuthStore.getState().setPasswordRecovery(false);
+                    router.back();
+                  }
+                }}
               >
                 <Text style={styles.backButtonText}>{step > 1 ? 'Voltar' : 'Voltar para Login'}</Text>
               </TouchableOpacity>

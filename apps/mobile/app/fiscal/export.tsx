@@ -15,8 +15,11 @@ export default function ExportScreen() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   
-  // Mock options for MVP
-  const [selectedMonth, setSelectedMonth] = useState('MAIO/2026');
+  const monthNames = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+  const now = new Date();
+  const defaultMonth = `${monthNames[now.getMonth()]}/${now.getFullYear()}`;
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+
   const [options, setOptions] = useState({
     revenue: true,
     invoices: true,
@@ -24,8 +27,6 @@ export default function ExportScreen() {
   });
 
   const toggleOption = (key: keyof typeof options) => {
-  const Colors = useThemeColors();
-  const styles = getStyles(Colors);
     setOptions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -33,21 +34,75 @@ export default function ExportScreen() {
     if (!user) return;
     setLoading(true);
     
-    // In a real app we'd fetch data for the selected month. We use mocked aggregation here:
-    const mockRevenue = 5430.00;
-    const mockExpenses = 1200.00;
-    const mockDasStatus = "Pago em 20/05/2026";
-    
-    const html = getExportHtmlTemplate(
-      user.user_metadata?.name || 'Empreendedor MEI',
-      selectedMonth,
-      mockRevenue,
-      mockExpenses,
-      mockDasStatus
-    );
+    try {
+      // 1. Extrai ano e mês da string selecionada (ex: "MAIO/2026")
+      const [mName, yearStr] = selectedMonth.split('/');
+      const monthIdx = monthNames.indexOf(mName.toUpperCase());
+      const year = parseInt(yearStr, 10) || now.getFullYear();
+      const monthNum = monthIdx >= 0 ? monthIdx + 1 : now.getMonth() + 1;
+      
+      const startStr = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, monthNum, 0).getDate();
+      const endStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    await generateAndSharePDF(`Malote_Contabil_${selectedMonth.replace('/', '_')}`, html);
-    setLoading(false);
+      // 2. Buscar receitas e despesas reais no Supabase
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('type, amount')
+        .eq('user_id', user.id)
+        .gte('date', startStr)
+        .lte('date', endStr);
+
+      let realRevenue = 0;
+      let realExpenses = 0;
+
+      if (txs && txs.length > 0) {
+        for (const t of txs) {
+          const val = Number(t.amount) || 0;
+          if (t.type === 'income' || t.type === 'receita') {
+            realRevenue += val;
+          } else if (t.type === 'expense' || t.type === 'despesa') {
+            realExpenses += val;
+          }
+        }
+      }
+
+      // 3. Buscar status real do DAS do período
+      const { data: dasData } = await supabase
+        .from('das_records')
+        .select('status, payment_date, due_date')
+        .eq('user_id', user.id)
+        .ilike('reference_month', `%${mName}%`)
+        .limit(1)
+        .maybeSingle();
+
+      let dasStatusText = 'Não localizado';
+      if (dasData) {
+        if (dasData.status === 'paid' || dasData.status === 'pago') {
+          dasStatusText = `Pago${dasData.payment_date ? ` em ${dasData.payment_date}` : ''}`;
+        } else if (dasData.status === 'pending' || dasData.status === 'pendente') {
+          dasStatusText = `Pendente (Vencimento: ${dasData.due_date || 'A definir'})`;
+        } else {
+          dasStatusText = dasData.status.toUpperCase();
+        }
+      }
+
+      const userName = user.user_metadata?.full_name || user.user_metadata?.name || 'Empreendedor MEI';
+
+      const html = getExportHtmlTemplate(
+        userName,
+        selectedMonth,
+        realRevenue,
+        realExpenses,
+        dasStatusText
+      );
+
+      await generateAndSharePDF(`Malote_Contabil_${selectedMonth.replace('/', '_')}`, html);
+    } catch (err) {
+      console.error('Erro ao gerar malote contábil:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

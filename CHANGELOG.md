@@ -62,6 +62,10 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Arquivos sem referência (fallow): `components/ExternalLink.tsx`, `components/dashboard/QuickActions.tsx`, `components/useColorScheme.web.ts`, `scratch/test_supabase.ts`
 
 ### Fixed
+- **Bug Recuperação de Senha**: `_layout.tsx` redirecionava o usuário para fora de `/auth/recover` assim que o código OTP era verificado (porque `verifyOtp` disparava `SIGNED_IN` em vez de `PASSWORD_RECOVERY`, deixando `isPasswordRecovery: false`) — agora trava `setPasswordRecovery(true)` para permitir o Step 3 de nova senha e atualiza flags em `profiles`
+- **Bug Malote Contábil**: chamada ilegal de hook `useThemeColors()` dentro de callback `toggleOption` causava crash; relatório agora calcula faturamento, despesas e status de DAS reais do mês em vez de dados mockados
+- **Bug Onboarding CNPJ**: substituído retorno mock estático por consulta em tempo real à Receita Federal via BrasilAPI
+- **Bug DASN-SIMEI**: consolidação anual agora agrega faturamento real de serviços e comércio via `transactions` do ano selecionado e valida declarações já enviadas
 - **Bug GPS (Clientes)**: lista não recarregava após salvar — `ClientFormModal` usava instância própria de `useClients`; agora recebe `saveClient` da tela, e o mapa passa a ver as coordenadas novas sem pull-to-refresh
 - **Bug edição de cliente**: `parseAddress` não batia com o formato gravado (perdia número, UF e CEP e deslocava bairro/cidade) — substituído por regex do formato real
 - **Bug GPS**: editar cliente sem alterar endereço regeocodificava e, se a rede falhasse, apagava `lat/lng` — agora preserva coordenadas existentes; `NaN` do Nominatim vira `null`

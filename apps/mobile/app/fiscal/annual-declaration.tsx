@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -16,10 +16,73 @@ export default function AnnualDeclaration() {
   const { user } = useAuthStore();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() - 1);
   
-  // Mock de consolidação automática
-  const revenueServices = 42500.00;
-  const revenueCommerce = 12400.00;
+  const [revenueServices, setRevenueServices] = useState(0);
+  const [revenueCommerce, setRevenueCommerce] = useState(0);
+  const [loadingConsolidation, setLoadingConsolidation] = useState(false);
+  const [alreadySent, setAlreadySent] = useState(false);
   const totalRevenue = revenueServices + revenueCommerce;
+
+  useEffect(() => {
+    if (user) {
+      loadYearData();
+    }
+  }, [user, selectedYear]);
+
+  const loadYearData = async () => {
+    if (!user) return;
+    setLoadingConsolidation(true);
+    try {
+      const startStr = `${selectedYear}-01-01`;
+      const endStr = `${selectedYear}-12-31`;
+
+      const { data: existingDecl } = await supabase
+        .from('annual_declarations')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('year', selectedYear)
+        .maybeSingle();
+
+      if (existingDecl) {
+        setAlreadySent(true);
+        setRevenueServices(Number(existingDecl.total_revenue_services) || 0);
+        setRevenueCommerce(Number(existingDecl.total_revenue_commerce) || 0);
+        return;
+      }
+
+      setAlreadySent(false);
+
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('amount, type, category')
+        .eq('user_id', user.id)
+        .gte('date', startStr)
+        .lte('date', endStr);
+
+      let serv = 0;
+      let comm = 0;
+
+      if (txs && txs.length > 0) {
+        for (const t of txs) {
+          if (t.type === 'income' || t.type === 'receita') {
+            const val = Number(t.amount) || 0;
+            const cat = (t.category || '').toLowerCase();
+            if (cat.includes('comercio') || cat.includes('venda') || cat.includes('produto')) {
+              comm += val;
+            } else {
+              serv += val;
+            }
+          }
+        }
+      }
+
+      setRevenueServices(serv);
+      setRevenueCommerce(comm);
+    } catch (e) {
+      console.warn('Erro ao consolidar ano:', e);
+    } finally {
+      setLoadingConsolidation(false);
+    }
+  };
 
   const [isTransmitting, setIsTransmitting] = useState(false);
 

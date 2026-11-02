@@ -53,18 +53,41 @@ export default function OnboardingScreen() {
     }
 
     setLoading(true);
-    // TODO: Integrar com a API do Backend
-    // Simulação de retorno da Receita Federal
-    setTimeout(() => {
-      setRazaoSocial('Exemplo LTDA ME');
-      setFantasyName('MEIFlow Demo');
-      setActivity('Serviços de Desenvolvimento de Software');
-      setCep(maskCEP('12345678'));
-      setStreet('Rua Exemplo, 123');
-      setCity('São Paulo');
-      setUf('SP');
+    try {
+      const cleanCnpj = cnpj.replace(/\D/g, '');
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`);
+      
+      if (!response.ok) {
+        throw new Error('CNPJ não encontrado na base pública.');
+      }
+
+      const data = await response.json();
+      if (data.razao_social) setRazaoSocial(data.razao_social);
+      if (data.nome_fantasia) {
+        setFantasyName(data.nome_fantasia);
+      } else if (data.razao_social) {
+        setFantasyName(data.razao_social);
+      }
+      if (data.cnae_fiscal_descricao) setActivity(data.cnae_fiscal_descricao);
+      if (data.cep) setCep(maskCEP(String(data.cep)));
+      
+      const fullStreet = data.logradouro 
+        ? `${data.logradouro}${data.numero && data.numero !== 'S/N' ? `, ${data.numero}` : ''}`
+        : '';
+      if (fullStreet) setStreet(fullStreet);
+      if (data.municipio) setCity(data.municipio);
+      if (data.uf) setUf(data.uf);
+
+      Alert.alert('Dados Encontrados', 'Os dados da sua empresa foram localizados e preenchidos automaticamente.');
+    } catch (err: any) {
+      console.warn('Erro ao buscar dados do CNPJ:', err);
+      Alert.alert(
+        'Consulta Indisponível',
+        'Não conseguimos carregar os dados automaticamente pela Receita Federal. Você pode preenchê-los manualmente abaixo.'
+      );
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const handleCompleteOnboarding = async () => {

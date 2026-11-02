@@ -68,6 +68,7 @@ export default function ChangePasswordScreen() {
 
       Alert.alert('Sucesso', 'Sua senha foi atualizada com sucesso!');
       
+      useAuthStore.getState().setPasswordRecovery(false);
       await refreshProfile();
       // O layout vai redirecionar automaticamente para o onboarding ou tabs
     } catch (error: any) {
