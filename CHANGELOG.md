@@ -58,8 +58,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Dependência `expo-local-authentication` (declarada mas nunca usada)
 - Dependência `@react-native-async-storage/async-storage` (declarada mas não usada)
 - Dependência `react-native-worklets` (peer dep não mais necessária)
+- Arquivos sem referência (fallow): `components/ExternalLink.tsx`, `components/dashboard/QuickActions.tsx`, `components/useColorScheme.web.ts`, `scratch/test_supabase.ts`
 
 ### Fixed
+- **Bug GPS (Clientes)**: lista não recarregava após salvar — `ClientFormModal` usava instância própria de `useClients`; agora recebe `saveClient` da tela, e o mapa passa a ver as coordenadas novas sem pull-to-refresh
+- **Bug edição de cliente**: `parseAddress` não batia com o formato gravado (perdia número, UF e CEP e deslocava bairro/cidade) — substituído por regex do formato real
+- **Bug GPS**: editar cliente sem alterar endereço regeocodificava e, se a rede falhasse, apagava `lat/lng` — agora preserva coordenadas existentes; `NaN` do Nominatim vira `null`
+- **Segurança (defesa em profundidade)**: update de `clients` filtra também por `user_id`, além do RLS
 - **Bug**: Tela DASN-SIMEI escrevia em tabela inexistente (`dasn_declarations`) — corrigido para `annual_declarations`
 - **Bug**: Coluna `gross_revenue` não existe — corrigido para `total_revenue_services` + `total_revenue_commerce`
 - **Bug**: Limite MEI hardcoded em R$ 81.000 — atualizado para R$ 130.000 (2026)

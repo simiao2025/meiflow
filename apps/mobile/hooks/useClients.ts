@@ -93,6 +93,9 @@ export function useClients() {
 
     // NÃO faz fallback para marco zero da cidade — retorna null
     // para que o app saiba que não conseguiu geocodificar o endereço específico
+    if (!Number.isFinite(clientLat) || !Number.isFinite(clientLng)) {
+      return { lat: null, lng: null };
+    }
     return { lat: clientLat, lng: clientLng };
   };
 
@@ -102,11 +105,19 @@ export function useClients() {
   ): Promise<boolean> => {
     if (!user) return false;
 
-    const { lat, lng } = await geocodeAddress(
-      clientData.formatted_address || '',
-      clientData.city || '',
-      clientData.state || ''
-    );
+    // Endereço inalterado com coordenadas já gravadas: não regeocodifica
+    // (evita apagar lat/lng por falha de rede e reenviar o endereço ao OSM)
+    const existing = editingId ? clients.find(c => c.id === editingId) : undefined;
+    const addressUnchanged =
+      !!existing && existing.formatted_address === clientData.formatted_address && existing.lat != null && existing.lng != null;
+
+    const { lat, lng } = addressUnchanged
+      ? { lat: existing!.lat!, lng: existing!.lng! }
+      : await geocodeAddress(
+          clientData.formatted_address || '',
+          clientData.city || '',
+          clientData.state || ''
+        );
 
     const dataToSave = {
       ...clientData,
@@ -116,7 +127,7 @@ export function useClients() {
 
     let error;
     if (editingId) {
-      const { error: updateError } = await supabase.from('clients').update(dataToSave).eq('id', editingId);
+      const { error: updateError } = await supabase.from('clients').update(dataToSave).eq('id', editingId).eq('user_id', user.id);
       error = updateError;
     } else {
       const { error: insertError } = await supabase.from('clients').insert({

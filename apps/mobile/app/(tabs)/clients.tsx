@@ -13,7 +13,7 @@ import { ClientFormModal } from '../../components/crm/ClientFormModal';
 export default function ClientsScreen() {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
-  const { clients, loading, loadClients } = useClients();
+  const { clients, loading, loadClients, saveClient } = useClients();
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
@@ -92,6 +92,7 @@ export default function ClientsScreen() {
         visible={modalVisible} 
         onClose={handleModalClose} 
         editingClient={editingClient}
+        saveClient={saveClient}
       />
     </View>
   );

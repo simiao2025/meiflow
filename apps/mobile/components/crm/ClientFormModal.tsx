@@ -4,18 +4,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography, useThemeColors } from '../../constants/theme';
-import { useClients } from '../../hooks/useClients';
+import type { useClients } from '../../hooks/useClients';
 
 interface ClientFormModalProps {
   visible: boolean;
   onClose: () => void;
   editingClient?: any | null;
+  // Recebido da tela para que o reload após salvar atualize a lista exibida
+  saveClient: ReturnType<typeof useClients>['saveClient'];
 }
 
-export function ClientFormModal({ visible, onClose, editingClient }: ClientFormModalProps) {
+// Formato gravado: `${street}, ${number} - ${neighborhood}, ${city} - ${state}, ${cep}`
+const ADDRESS_RE = /^(.+), ([^,]*?) - ([^,]*), ([^,]*?) - ([^,]*), ([^,]*)$/;
+
+export function ClientFormModal({ visible, onClose, editingClient, saveClient }: ClientFormModalProps) {
   const Colors = useThemeColors();
   const styles = getStyles(Colors);
-  const { saveClient } = useClients();
 
   const [personType, setPersonType] = useState<'pf' | 'pj'>('pf');
   const [name, setName] = useState('');
@@ -33,6 +37,7 @@ export function ClientFormModal({ visible, onClose, editingClient }: ClientFormM
 
   useEffect(() => {
     if (editingClient) {
+      resetForm();
       setName(editingClient.name || '');
       setDocument(editingClient.document || '');
       setPhone(editingClient.phone || '');
@@ -46,19 +51,19 @@ export function ClientFormModal({ visible, onClose, editingClient }: ClientFormM
 
   const parseAddress = (formattedAddress?: string) => {
     if (!formattedAddress) return;
-    const parts = formattedAddress.split(',').map((s: string) => s.trim());
-    if (parts.length >= 4) {
-      const streetNumber = parts[0].split('-').map((s: string) => s.trim());
-      setStreet(streetNumber[0] || '');
-      setNumber(streetNumber[1] || '');
-      setNeighborhood(parts[1] || '');
-      setCity(parts[2] || '');
-      if (parts.length >= 5) {
-        const stateZip = parts[parts.length - 2].split('-').map((s: string) => s.trim());
-        setState(stateZip[0] || '');
-        setCep(parts[parts.length - 1] || '');
-      }
+    const match = ADDRESS_RE.exec(formattedAddress);
+    if (!match) {
+      // Formato desconhecido: preserva o texto para o usuário corrigir
+      setStreet(formattedAddress);
+      return;
     }
+    const [, streetPart, numberPart, neighborhoodPart, cityPart, statePart, cepPart] = match;
+    setStreet(streetPart);
+    setNumber(numberPart);
+    setNeighborhood(neighborhoodPart);
+    setCity(cityPart);
+    setState(statePart);
+    setCep(cepPart);
   };
 
   const resetForm = () => {
