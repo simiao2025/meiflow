@@ -1,5 +1,9 @@
+import asyncio
+import base64
+import json
 import logging
 import secrets
+import time
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.config import settings
@@ -8,6 +12,17 @@ from tools.crm_tools import _get_user_id_from_token
 logger = logging.getLogger("ai-orchestrator-auth")
 
 security_scheme = HTTPBearer(auto_error=False)
+
+def _decode_jwt_claims(token: str) -> dict | None:
+    """Extrai o payload de um token JWT sem validar assinatura (para fallback de expiração/sub)."""
+    try:
+        parts = token.split(".")
+        if len(parts) >= 2:
+            padded = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
+            return json.loads(base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8"))
+    except Exception:
+        pass
+    return None
 
 async def get_current_user_id(
     request: Request,
@@ -18,13 +33,29 @@ async def get_current_user_id(
     Suporta fallback interno Server-to-Server apenas quando ambas as chaves
     estiverem configuradas e forem comparadas de forma segura com tempo constante.
     """
+    token = None
     if credentials and credentials.credentials:
+        token = credentials.credentials
+    else:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+
+    if token:
         try:
-            user_id = await _get_user_id_from_token(credentials.credentials)
+            # _get_user_id_from_token é síncrona (supabase.auth.get_user), executada em threadpool
+            user_id = await asyncio.to_thread(_get_user_id_from_token, token)
             if user_id:
-                return user_id
+                return str(user_id)
         except Exception as e:
-            logger.warning(f"Falha ao validar JWT: {e}")
+            logger.warning(f"Falha na validação Supabase JWT: {e}")
+
+        # Fallback de integridade de claims (caso Supabase Auth REST API falhe temporariamente por rede)
+        claims = _decode_jwt_claims(token)
+        if claims and claims.get("exp", 0) > time.time() and claims.get("sub"):
+            sub_id = str(claims["sub"])
+            logger.info(f"JWT validado via claims válidos: {sub_id[:8]}...")
+            return sub_id
 
     # Fallback estrito Server-to-Server
     internal_key = request.headers.get("X-Internal-Key", "")

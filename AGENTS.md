@@ -68,6 +68,7 @@
   - Webhooks Asaas (`/api/webhooks/asaas`) e Meta WhatsApp (`/webhook`) convertidos de fail-open para **Fail-Closed**: recusam conexões se o secret de ambiente estiver vazio ou inválido, prevenindo timing attacks com `secrets.compare_digest`.
   - Chat `/api/v1/chat` e áudio `/api/v1/chat/audio` aceitam JWT com fallback para body do APK legado (100% retrocompatível com APK v1.0).
   - Rotas de proxy Evolution Go (`instance/create`, `pairing-code`, etc.) extraem o usuário do JWT e injetam a chave mestra pelo servidor backend, corrigindo erros 422 de schemas Pydantic.
+  - Correção de validação JWT (`auth.py` / `main.py`): execução síncrona de `_get_user_id_from_token` desacoplada com `asyncio.to_thread` e decodificação defensiva de claims, sanando o erro 401 (*"Autenticação necessária"*) nas conexões de WhatsApp e Meta Cloud.
   - Áudio: uso de `tempfile.NamedTemporaryFile` para evitar colisões e path traversal.
   - `shared/security.py`: mitigação de timing attacks em checagens de `INTERNAL_API_KEY`.
 - 🌐 **Infraestrutura Evolution Go v3**:

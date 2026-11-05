@@ -264,7 +264,7 @@ async def api_chat(
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ):
     if credentials and credentials.credentials:
-        jwt_user_id = await _get_user_id_from_token(credentials.credentials)
+        jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
         if jwt_user_id:
             data.user_id = jwt_user_id
     elif not data.user_id:
@@ -302,7 +302,7 @@ async def api_chat_audio(
 ):
     """Recebe áudio base64 do app, transcreve, processa com IA e retorna texto + áudio."""
     if credentials and credentials.credentials:
-        jwt_user_id = await _get_user_id_from_token(credentials.credentials)
+        jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
         if jwt_user_id:
             data.user_id = jwt_user_id
     elif not data.user_id:
@@ -377,7 +377,7 @@ async def proxy_instance_create(
                 f"{CRM_SERVICE_URL}/evolution/instance/create",
                 json=payload,
                 headers={"X-Internal-Key": internal_key},
-                timeout=20.0
+                timeout=45.0
             )
             resp.raise_for_status()
             return resp.json()
@@ -403,7 +403,7 @@ async def proxy_pairing_code(
                 f"{CRM_SERVICE_URL}/evolution/instance/pairing-code",
                 json=payload,
                 headers={"X-Internal-Key": internal_key},
-                timeout=20.0
+                timeout=45.0
             )
             resp.raise_for_status()
             return resp.json()
@@ -429,7 +429,7 @@ async def proxy_instance_status(
             resp = await client.get(
                 f"{CRM_SERVICE_URL}/evolution/instance/status/{user_id}",
                 headers={"X-Internal-Key": internal_key},
-                timeout=10.0
+                timeout=30.0
             )
             resp.raise_for_status()
             return resp.json()

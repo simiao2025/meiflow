@@ -99,22 +99,37 @@ class SendTestRequest(BaseModel):
     text: str
 
 
-# --- Helpers Redis (validade curta p/ PKCE) ---
+# --- Helpers Redis (validade curta p/ PKCE) com Fallback em Memória ---
+
+_in_memory_oauth_states: dict[str, tuple[dict, float]] = {}
 
 async def _store_oauth_state(state: str, user_id: str, verifier: str) -> None:
     """Persiste (user_id, verifier) por 5 min para o callback validar."""
     payload = json.dumps({"user_id": user_id, "verifier": verifier})
-    # decode_responses=True no redis_client -> valor retorna como str
-    await redis_client.set(f"meta:oauth:{state}", payload, ex=300)
+    try:
+        await redis_client.set(f"meta:oauth:{state}", payload, ex=300)
+    except Exception as e:
+        logger.warning(f"Redis indisponível para OAuth state ({e}), usando memória local.")
+        import time
+        _in_memory_oauth_states[state] = ({"user_id": user_id, "verifier": verifier}, time.time() + 300)
 
 
 async def _consume_oauth_state(state: str) -> Optional[dict]:
     """Lê e remove imediatamente (one-shot) — anti-replay."""
-    raw = await redis_client.get(f"meta:oauth:{state}")
-    if not raw:
-        return None
-    await redis_client.delete(f"meta:oauth:{state}")
-    return json.loads(raw)
+    try:
+        raw = await redis_client.get(f"meta:oauth:{state}")
+        if raw:
+            await redis_client.delete(f"meta:oauth:{state}")
+            return json.loads(raw)
+    except Exception as e:
+        logger.warning(f"Redis indisponível para leitura OAuth state ({e}), buscando memória local.")
+
+    import time
+    if state in _in_memory_oauth_states:
+        data, exp = _in_memory_oauth_states.pop(state)
+        if exp > time.time():
+            return data
+    return None
 
 
 # --- Rotas ---
@@ -127,8 +142,13 @@ async def meta_oauth_start(req: OauthStartRequest, current_user_id: str = Depend
     """
     user_id = current_user_id or req.user_id
     redirect_uri = settings.META_OAUTH_REDIRECT_URI
-    if not redirect_uri:
-        raise HTTPException(status_code=500, detail="META_OAUTH_REDIRECT_URI não configurado.")
+    app_id = settings.META_APP_ID
+
+    if not redirect_uri or not app_id:
+        raise HTTPException(
+            status_code=503,
+            detail="A integração Meta Cloud API está em fase de homologação no Meta Developers. Por favor, utilize a Conexão WhatsApp (Evolution Go) enquanto a aprovação do Meta App é concluída.",
+        )
 
     state = generate_state()
     pkce = generate_pkce()

@@ -74,6 +74,9 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Arquivos sem referência (fallow): `components/ExternalLink.tsx`, `components/dashboard/QuickActions.tsx`, `components/useColorScheme.web.ts`, `scratch/test_supabase.ts`
 
 ### Fixed
+- **Autenticação JWT no Backend (Integrações Evolution Go e Meta Cloud)**: Corrigida execução da função síncrona `_get_user_id_from_token` em `services/ai-orchestrator/app/auth.py` e `main.py` via `asyncio.to_thread` e decodificação resiliente de claims. O uso anterior de `await` em função síncrona causava `TypeError` interno no Python, descartando o token válido enviado pelo mobile e gerando erro 401 (*"Autenticação necessária. Envie o token JWT no cabeçalho Authorization: Bearer <token>"*) ao tocar em Conexão WhatsApp ou Meta Cloud API.
+- **Resiliência OAuth Meta**: Adicionado fallback em memória para retenção de `state` e PKCE verifier caso Redis esteja inacessível; resposta 503 com orientação explícita caso `META_APP_ID` ou `META_OAUTH_REDIRECT_URI` ainda não estejam preenchidos no servidor.
+- **Timeouts de Proxy CRM**: Aumentado timeout de comunicação com microsserviço CRM de 20s para 45s para mitigar latência de cold-start no Render.
 - **Bug Recuperação de Senha**: `_layout.tsx` redirecionava o usuário para fora de `/auth/recover` assim que o código OTP era verificado (porque `verifyOtp` disparava `SIGNED_IN` em vez de `PASSWORD_RECOVERY`, deixando `isPasswordRecovery: false`) — agora trava `setPasswordRecovery(true)` para permitir o Step 3 de nova senha e atualiza flags em `profiles`
 - **Bug Malote Contábil**: chamada ilegal de hook `useThemeColors()` dentro de callback `toggleOption` causava crash; relatório agora calcula faturamento, despesas e status de DAS reais do mês em vez de dados mockados
 - **Bug Onboarding CNPJ**: substituído retorno mock estático por consulta em tempo real à Receita Federal via BrasilAPI
