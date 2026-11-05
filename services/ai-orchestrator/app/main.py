@@ -28,34 +28,7 @@ from tools.crm_tools import _get_user_id_from_token, _supabase_get, _supabase_pa
 
 logger = logging.getLogger(__name__)
 
-# Esquema de autenticação
-security_scheme = HTTPBearer(auto_error=False)
-
-async def get_current_user_id(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
-) -> str:
-    """Extrai o user_id do JWT (via Supabase Auth) ou X-User-Id header (fallback interno)."""
-    if credentials:
-        try:
-            user_id = await _get_user_id_from_token(credentials.credentials)
-            if user_id:
-                return user_id
-        except Exception as e:
-            logger.warning(f"Falha ao validar JWT: {e}")
-
-    internal_key = request.headers.get("X-Internal-Key", "")
-    user_id_header = request.headers.get("X-User-Id", "")
-    if internal_key and user_id_header:
-        expected_key = getattr(settings, "INTERNAL_API_KEY", "") or ""
-        if expected_key and internal_key == expected_key:
-            logger.warning(f"Internal key auth used for user {user_id_header[:8]}... — migrate to JWT")
-            return user_id_header
-
-    raise HTTPException(
-        status_code=401,
-        detail="Autenticação necessária. Envie Authorization: Bearer <jwt> ou X-Internal-Key + X-User-Id.",
-    )
+from app.auth import get_current_user_id, security_scheme
 
 app = FastAPI(title="MEIFlow AI Service", version="0.1.0")
 app.add_middleware(SecurityHeadersMiddleware)
@@ -83,21 +56,27 @@ async def startup_event():
     start_scheduler()
 
 class EmitInvoiceRequest(BaseModel):
-    user_id: str
+    user_id: str | None = None
     client_id: str
     catalog_item_id: str
     quantity: float
 
 @app.post("/api/fiscal/emit")
-async def emit_invoice(data: EmitInvoiceRequest):
+async def emit_invoice(
+    data: EmitInvoiceRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
     from tools.crm_tools import CRM_SERVICE_URL
     from tools.fiscal_tools import FISCAL_SERVICE_URL, get_headers
+
+    user_id = current_user_id or data.user_id
+    data.user_id = user_id
 
     try:
         # 1. Fetch client details from CRM Service
         async with httpx.AsyncClient() as client_http:
             # Precisamos de um endpoint específico no CRM ou filtrar o list
-            resp_crm = await client_http.get(f"{CRM_SERVICE_URL}/clients/{data.user_id}", headers=get_headers())
+            resp_crm = await client_http.get(f"{CRM_SERVICE_URL}/clients/{user_id}", headers=get_headers())
             resp_crm.raise_for_status()
             clients = resp_crm.json()
             client = next((c for c in clients if c['id'] == data.client_id), None)
@@ -107,7 +86,7 @@ async def emit_invoice(data: EmitInvoiceRequest):
 
         # 2. Call Fiscal Service to emit
         payload = {
-            "user_id": data.user_id,
+            "user_id": user_id,
             "client_id": data.client_id,
             "amount": 0, # Exemplo simplificado
             "description": "Emissão via API"
@@ -126,12 +105,18 @@ async def emit_invoice(data: EmitInvoiceRequest):
         raise HTTPException(status_code=500, detail="Erro interno ao processar emissão.")
 
 @app.get("/api/fiscal/report")
-async def get_accountant_report(user_id: str, month: int, year: int):
+async def get_accountant_report(
+    month: int,
+    year: int,
+    user_id: str | None = None,
+    current_user_id: str = Depends(get_current_user_id)
+):
     """
     Gera um relatório CSV mensal das notas emitidas e capturadas para o contador baixar.
     """
+    effective_user_id = current_user_id or user_id
     try:
-        invoices = await _supabase_get("invoices", {"user_id": f"eq.{user_id}"})
+        invoices = await _supabase_get("invoices", {"user_id": f"eq.{effective_user_id}"})
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -161,21 +146,27 @@ async def get_accountant_report(user_id: str, month: int, year: int):
         raise HTTPException(status_code=500, detail="Erro interno ao gerar relatório.")
 
 class CreateChargeRequest(BaseModel):
-    user_id: str
+    user_id: str | None = None
     client_id: str
     amount: float
     method: str
     description: str = ""
 
 @app.post("/api/billing/charge")
-async def create_billing_charge(data: CreateChargeRequest):
+async def create_billing_charge(
+    data: CreateChargeRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
     from tools.crm_tools import CRM_SERVICE_URL
     from tools.financial_tools import FINANCIAL_SERVICE_URL, get_headers
+
+    user_id = current_user_id or data.user_id
+    data.user_id = user_id
 
     try:
         # 1. Fetch Client Name from CRM Service
         async with httpx.AsyncClient() as client_http:
-            resp_crm = await client_http.get(f"{CRM_SERVICE_URL}/clients/{data.user_id}", headers=get_headers())
+            resp_crm = await client_http.get(f"{CRM_SERVICE_URL}/clients/{user_id}", headers=get_headers())
             resp_crm.raise_for_status()
             clients = resp_crm.json()
             client = next((c for c in clients if c['id'] == data.client_id), None)
@@ -184,7 +175,7 @@ async def create_billing_charge(data: CreateChargeRequest):
         # 2. Se for Dinheiro, chama o Financial Service
         if data.method == 'cash':
             payload_trans = {
-                "user_id": data.user_id,
+                "user_id": user_id,
                 "amount": data.amount,
                 "description": data.description or "Pagamento em dinheiro",
                 "category": "Receita"
@@ -207,12 +198,13 @@ async def create_billing_charge(data: CreateChargeRequest):
 async def webhook_asaas(request: Request, event_data: dict):
     """
     Recebe evento de pagamento confirmado do Asaas.
-    Protegido por token de webhook.
+    Protegido por token de webhook (Fail-Closed).
     """
-    # Validação do token de webhook
+    import secrets
     token = request.headers.get("asaas-access-token", "")
-    if settings.ASAAS_WEBHOOK_TOKEN and token != settings.ASAAS_WEBHOOK_TOKEN:
-        logger.warning("Webhook Asaas rejeitado: token inválido")
+    expected = settings.ASAAS_WEBHOOK_TOKEN
+    if not expected or not token or not secrets.compare_digest(token, expected):
+        logger.warning("Webhook Asaas rejeitado: token ausente ou inválido")
         raise HTTPException(status_code=403, detail="Token inválido")
 
     try:
@@ -258,7 +250,7 @@ async def webhook_asaas(request: Request, event_data: dict):
 
 class ChatRequest(BaseModel):
     message: str
-    user_id: str
+    user_id: str | None = None
     thread_id: str = "default"
     provider: str | None = None  # openai, anthropic, google, groq
 
@@ -267,16 +259,27 @@ class ChatResponse(BaseModel):
     thread_id: str
 
 @app.post("/api/v1/chat")
-async def api_chat(data: ChatRequest):
+async def api_chat(
+    data: ChatRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+):
+    if credentials and credentials.credentials:
+        jwt_user_id = await _get_user_id_from_token(credentials.credentials)
+        if jwt_user_id:
+            data.user_id = jwt_user_id
+    elif not data.user_id:
+        raise HTTPException(status_code=401, detail="Autenticação necessária.")
+
+    user_id = data.user_id
     try:
         initial_state = {
             "messages": [HumanMessage(content=data.message)],
-            "user_id": data.user_id,
+            "user_id": user_id,
             "provider": data.provider,  # Provider selecionado pelo usuário no app
         }
         config = {"configurable": {"thread_id": data.thread_id}}
 
-        logger.info(f"Chat user={data.user_id} provider={data.provider or 'default'}")
+        logger.info(f"Chat user={user_id} provider={data.provider or 'default'}")
         result = await assistant_app.ainvoke(initial_state, config=config)
         ai_response_text = result["messages"][-1].content or ""
 
@@ -287,18 +290,29 @@ async def api_chat(data: ChatRequest):
 
 class AudioChatRequest(BaseModel):
     audio_base64: str
-    user_id: str
+    user_id: str | None = None
     thread_id: str = "default"
     provider: str | None = None  # openai, anthropic, google, groq
     return_audio: bool = True  # Se True, retorna TTS da resposta
 
 @app.post("/api/v1/chat/audio")
-async def api_chat_audio(data: AudioChatRequest):
+async def api_chat_audio(
+    data: AudioChatRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
+):
     """Recebe áudio base64 do app, transcreve, processa com IA e retorna texto + áudio."""
+    if credentials and credentials.credentials:
+        jwt_user_id = await _get_user_id_from_token(credentials.credentials)
+        if jwt_user_id:
+            data.user_id = jwt_user_id
+    elif not data.user_id:
+        raise HTTPException(status_code=401, detail="Autenticação necessária.")
+
+    user_id = data.user_id
     try:
         # 1. Decodifica e transcreve o áudio
         audio_bytes = base64.b64decode(data.audio_base64)
-        transcribed_text = await AudioService.transcribe_audio(audio_bytes, f"app_{data.user_id[:8]}.m4a")
+        transcribed_text = await AudioService.transcribe_audio(audio_bytes, f"app_{user_id[:8]}.m4a")
 
         if not transcribed_text:
             return {"response": "Não consegui entender o áudio. Tente novamente.", "transcription": "", "audio_base64": None}
@@ -308,7 +322,7 @@ async def api_chat_audio(data: AudioChatRequest):
         # 2. Processa com a IA (mesmo fluxo do chat texto)
         initial_state = {
             "messages": [HumanMessage(content=transcribed_text)],
-            "user_id": data.user_id,
+            "user_id": user_id,
             "provider": data.provider,  # Provider selecionado pelo usuário
         }
         config = {"configurable": {"thread_id": data.thread_id}}
@@ -340,22 +354,29 @@ async def health():
 # --- CRM Service Proxies (WhatsApp Integration) ---
 
 class EvolutionPairingRequest(BaseModel):
-    user_id: str
     phone_number: str
+    user_id: str | None = None
 
 class EvolutionInstanceRequest(BaseModel):
-    user_id: str
     cnpj: str
+    user_id: str | None = None
 
 @app.post("/api/v1/crm/evolution/instance/create")
-async def proxy_instance_create(req: EvolutionInstanceRequest, request: Request):
+async def proxy_instance_create(
+    req: EvolutionInstanceRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
     from tools.crm_tools import CRM_SERVICE_URL
+    user_id = current_user_id or req.user_id
+    payload = {"user_id": user_id, "cnpj": req.cnpj}
+    internal_key = getattr(settings, "INTERNAL_API_KEY", "")
+
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 f"{CRM_SERVICE_URL}/evolution/instance/create",
-                json=req.dict(),
-                headers={"X-Internal-Key": request.headers.get("X-Internal-Key", "")},
+                json=payload,
+                headers={"X-Internal-Key": internal_key},
                 timeout=20.0
             )
             resp.raise_for_status()
@@ -367,14 +388,21 @@ async def proxy_instance_create(req: EvolutionInstanceRequest, request: Request)
             raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
 
 @app.post("/api/v1/crm/evolution/instance/pairing-code")
-async def proxy_pairing_code(req: EvolutionPairingRequest, request: Request):
+async def proxy_pairing_code(
+    req: EvolutionPairingRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
     from tools.crm_tools import CRM_SERVICE_URL
+    user_id = current_user_id or req.user_id
+    payload = {"user_id": user_id, "phone_number": req.phone_number}
+    internal_key = getattr(settings, "INTERNAL_API_KEY", "")
+
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 f"{CRM_SERVICE_URL}/evolution/instance/pairing-code",
-                json=req.dict(),
-                headers={"X-Internal-Key": request.headers.get("X-Internal-Key", "")},
+                json=payload,
+                headers={"X-Internal-Key": internal_key},
                 timeout=20.0
             )
             resp.raise_for_status()
@@ -386,13 +414,21 @@ async def proxy_pairing_code(req: EvolutionPairingRequest, request: Request):
             raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
 
 @app.get("/api/v1/crm/evolution/instance/status/{user_id}")
-async def proxy_instance_status(user_id: str, request: Request):
+async def proxy_instance_status(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    if current_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+
     from tools.crm_tools import CRM_SERVICE_URL
+    internal_key = getattr(settings, "INTERNAL_API_KEY", "")
+
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(
                 f"{CRM_SERVICE_URL}/evolution/instance/status/{user_id}",
-                headers={"X-Internal-Key": request.headers.get("X-Internal-Key", "")},
+                headers={"X-Internal-Key": internal_key},
                 timeout=10.0
             )
             resp.raise_for_status()
@@ -404,13 +440,21 @@ async def proxy_instance_status(user_id: str, request: Request):
             raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
 
 @app.delete("/api/v1/crm/evolution/instance/disconnect/{user_id}")
-async def proxy_instance_disconnect(user_id: str, request: Request):
+async def proxy_instance_disconnect(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    if current_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+
     from tools.crm_tools import CRM_SERVICE_URL
+    internal_key = getattr(settings, "INTERNAL_API_KEY", "")
+
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.delete(
                 f"{CRM_SERVICE_URL}/evolution/instance/disconnect/{user_id}",
-                headers={"X-Internal-Key": request.headers.get("X-Internal-Key", "")},
+                headers={"X-Internal-Key": internal_key},
                 timeout=15.0
             )
             resp.raise_for_status()
@@ -423,10 +467,12 @@ async def proxy_instance_disconnect(user_id: str, request: Request):
 
 @app.post("/webhook/whatsapp")
 async def whatsapp_webhook(request: Request, data: dict):
-    # Validação do token de webhook (Evolution API envia no header)
+    # Validação do token de webhook (Fail-Closed com tempo constante)
+    import secrets
     webhook_token = request.headers.get("x-webhook-token", "")
-    if settings.WEBHOOK_SECRET_TOKEN and webhook_token != settings.WEBHOOK_SECRET_TOKEN:
-        logger.warning("Webhook WhatsApp rejeitado: token inválido")
+    expected = settings.WEBHOOK_SECRET_TOKEN
+    if not expected or not webhook_token or not secrets.compare_digest(webhook_token, expected):
+        logger.warning("Webhook WhatsApp rejeitado: token ausente ou inválido")
         raise HTTPException(status_code=403, detail="Token inválido")
 
     event = data.get('event', '').lower()

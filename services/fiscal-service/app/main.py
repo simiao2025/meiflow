@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+load_dotenv()
+
 # Adiciona o diretório shared ao path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from shared.models import UserProfile

@@ -7,6 +7,18 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+### Security
+- **Auditoria Forense de Integrações & Blindagem (Fail-Closed)**:
+  - `ai-orchestrator`: endpoints `/api/fiscal/emit`, `/api/fiscal/report` e `/api/billing/charge` blindados com autenticação obrigatória via JWT do Supabase (`Depends(get_current_user_id)`).
+  - `ai-orchestrator`: webhooks Asaas (`/api/webhooks/asaas`) e Meta WhatsApp (`/webhook`) convertidos de fail-open para **Fail-Closed**; rejeitam com 401/403 se os segredos não estiverem configurados ou forem inválidos, mitigando timing attacks com `secrets.compare_digest`.
+  - `ai-orchestrator`: rotas de chat (`/api/v1/chat`, `/api/v1/chat/audio`) e CRM Evolution Go (`instance/create`, `pairing-code`, `status`, `disconnect`) ajustadas com retrocompatibilidade bidirecional: extraem o `user_id` autenticado do JWT Supabase sem quebrar requisições legadas do APK v1.0.
+  - `ai-orchestrator`: manipulação de áudio em `audio_service.py` migrada para `tempfile.NamedTemporaryFile` com limpeza garantida via context manager (anti-path traversal e colisão).
+  - `services/shared/security.py`: verificação de chaves internas migrada para `secrets.compare_digest` contra timing attacks.
+  - `crm-service`, `fiscal-service`, `financial-service`: inicialização enriquecida com `load_dotenv()` explícito para garantir injeção de segredos em qualquer ambiente de execução.
+  - `mobile`: purga de `EXPO_PUBLIC_INTERNAL_KEY` em `.env` e `.env.example`; inclusão de header `Authorization: Bearer <token>` em `useAssistantChat.ts` e `onboarding.tsx`.
+  - `supabase`: trigger `protect_meta_credentials()` em `public.profiles` impedindo que usuários adulterem `meta_phone_number_id` ou `meta_access_token` via PostgREST direto.
+  - `infra`: migração de endpoint do Evolution Go para `https://evolution-go.brasilonthebox.com` (IP 147.15.26.37) com proxy Caddy e TLS válidos.
+
 ### Added
 - **Auditoria Supabase**: Migração `00020_security_and_performance_audit.sql` — Habilitação de RLS em `transactions`, `das_records`, `nfse`; políticas otimizadas com `(select auth.uid())`; eliminação de conflitos de políticas permissivas; 26 índices em foreign keys; search_path protegido em 13 funções; revogação de privilégios anon em funções security definer; adição de colunas `city` e `state` em `public.clients`
 - **Meta Cloud API**: Integração oficial Meta WhatsApp Business Cloud API via OAuth 2.0 PKCE (Embedded Signup) — coexiste com Evolution Go (v3), ambos paralelos

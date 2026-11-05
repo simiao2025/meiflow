@@ -28,8 +28,9 @@ async def verify_internal_key(x_internal_key: str = Header(None)):
             detail="Acesso negado: Chave interna ausente."
         )
 
-    if x_internal_key != INTERNAL_API_KEY:
-        logger.warning(f"ACESSO NEGADO: Tentativa de acesso com chave inválida. Header: {x_internal_key[:4]}...")
+    import secrets
+    if not secrets.compare_digest(x_internal_key, INTERNAL_API_KEY):
+        logger.warning("ACESSO NEGADO: Tentativa de acesso com chave interna inválida.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Acesso negado: Chave interna inválida."

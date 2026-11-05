@@ -138,14 +138,15 @@ export default function OnboardingScreen() {
           return;
         }
         
-        // Note: Roteamento passa pelo NGINX (API Gateway)
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || '';
         await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            user_id: user?.id,
             cnpj: cnpj
           })
         });

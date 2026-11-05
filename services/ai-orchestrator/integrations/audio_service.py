@@ -1,4 +1,6 @@
 import os
+import tempfile
+from pathlib import Path
 
 from elevenlabs.client import AsyncElevenLabs
 from openai import AsyncOpenAI
@@ -18,22 +20,22 @@ class AudioService:
     async def transcribe_audio(audio_bytes: bytes, filename: str = "audio.ogg") -> str:
         """Transcreve áudio em bytes para texto usando OpenAI Whisper."""
         try:
-            # Whisper requires a file-like object with a filename.
-            # We save it temporarily
-            temp_path = f"/tmp/{filename}" if os.name != 'nt' else f"temp_{filename}"
-            with open(temp_path, "wb") as f:
-                f.write(audio_bytes)
+            suffix = Path(filename).suffix or ".ogg"
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(audio_bytes)
+                temp_path = tmp.name
 
-            with open(temp_path, "rb") as f:
-                transcript = await openai_client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=f,
-                    language="pt"
-                )
-
-            # Clean up
-            os.remove(temp_path)
-            return transcript.text
+            try:
+                with open(temp_path, "rb") as f:
+                    transcript = await openai_client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=f,
+                        language="pt"
+                    )
+                return transcript.text
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
         except Exception as e:
             print(f"Erro na transcrição de áudio: {e}")
             return ""

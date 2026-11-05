@@ -61,6 +61,26 @@
 
 ## 🔄 Últimas Mudanças (Sessão Atual)
 
+### FASE 6 — Auditoria Forense de Integrações & Blindagem (Fail-Closed) 🛡️⚡
+- 🔍 **Auditoria Forense Concluída**: Relatório detalhado em [`forensic_integrations_audit.md`](file:///C:/Users/PRV/.gemini/antigravity/brain/cc7ffb0e-4090-498f-a94f-36fc2d7f8839/forensic_integrations_audit.md). 10 vulnerabilidades mapeadas e mitigadas.
+- 🔒 **Blindagem de Endpoints & Fail-Closed**:
+  - `ai-orchestrator`: Endpoints sensíveis `/api/fiscal/emit`, `/api/fiscal/report` e `/api/billing/charge` agora exigem autenticação do usuário via `Depends(get_current_user_id)` (validação do JWT Supabase).
+  - Webhooks Asaas (`/api/webhooks/asaas`) e Meta WhatsApp (`/webhook`) convertidos de fail-open para **Fail-Closed**: recusam conexões se o secret de ambiente estiver vazio ou inválido, prevenindo timing attacks com `secrets.compare_digest`.
+  - Chat `/api/v1/chat` e áudio `/api/v1/chat/audio` aceitam JWT com fallback para body do APK legado (100% retrocompatível com APK v1.0).
+  - Rotas de proxy Evolution Go (`instance/create`, `pairing-code`, etc.) extraem o usuário do JWT e injetam a chave mestra pelo servidor backend, corrigindo erros 422 de schemas Pydantic.
+  - Áudio: uso de `tempfile.NamedTemporaryFile` para evitar colisões e path traversal.
+  - `shared/security.py`: mitigação de timing attacks em checagens de `INTERNAL_API_KEY`.
+- 🌐 **Infraestrutura Evolution Go v3**:
+  - Migração de domínio expirado para novo endpoint ativo: `https://evolution-go.brasilonthebox.com` (IP `147.15.26.37`), com TLS válido e Caddy configurado.
+  - Atualizado em `.env` do backend (`services/ai-orchestrator/.env`).
+- 🗄️ **Supabase Database**:
+  - Migration 00019 aplicada (`meta_*` colunas em `profiles`).
+  - Trigger `protect_meta_credentials()` criado em `public.profiles` para impedir adulteração de WABA ID / Token pelo cliente via REST PostgREST.
+- 📱 **Mobile & Compatibilidade de Produção**:
+  - Resíduo de `EXPO_PUBLIC_INTERNAL_KEY` purgado de `.env` e `.env.example`.
+  - Injeção de `Authorization: Bearer <token>` em `useAssistantChat.ts` e `onboarding.tsx`.
+  - O APK v1.0 existente em produção NÃO quebra, pois o backend mantém retrocompatibilidade transparente e as novidades de frontend são entregues via OTA (`eas update`).
+
 ### FASE 5 — Segurança + Integração Meta Cloud API 🛡️
 - 🔒 **Auditoria de segurança de integrações (3 vulnerabilidades corrigidas)**:
   - [CRÍTICA] Removido `EXPO_PUBLIC_INTERNAL_KEY` do mobile — agora usa apenas JWT do Supabase; `verify_jwt()` em `shared/security.py` valida token e extrai `user_id`

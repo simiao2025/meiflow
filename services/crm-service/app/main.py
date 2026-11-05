@@ -6,7 +6,8 @@ from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import httpx
-import os
+
+load_dotenv()
 
 # Adiciona o diretório shared ao path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))

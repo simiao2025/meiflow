@@ -67,10 +67,11 @@ const ALLOWED_ORIGINS = [
   "https://app.meiflow.com.br",
 ]
 
-function corsHeaders(): Record<string, string> {
+function corsHeaders(origin?: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Webhook-Token",
   }
@@ -659,11 +660,11 @@ async function handleWebhook(req: Request): Promise<Response> {
     const webhookToken = req.headers.get("x-webhook-token")
     const expectedToken = Deno.env.get("PLUGGY_WEBHOOK_SECRET")
 
-    if (expectedToken && webhookToken !== expectedToken) {
-      console.warn("Webhook rejeitado: token inválido")
+    if (!expectedToken || !webhookToken || webhookToken !== expectedToken) {
+      console.warn("Webhook rejeitado: token ausente ou inválido")
       return new Response(
         JSON.stringify({ error: "Invalid webhook token" }),
-        { status: 403, headers: corsHeaders() }
+        { status: 403, headers: corsHeaders(req.headers.get("Origin")) }
       )
     }
 

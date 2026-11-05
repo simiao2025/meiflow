@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     DEFAULT_LLM_PROVIDER: str = "openai" # "openai", "anthropic", "google"
     DEFAULT_LLM_MODEL: str = "gpt-4o"
 
+    # Internal Server-to-Server Auth
+    INTERNAL_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"

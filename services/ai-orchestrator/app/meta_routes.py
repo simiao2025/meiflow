@@ -24,12 +24,13 @@ import logging
 import re
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 from shared.cache import redis_client
 from shared.database import supabase, supabase_admin
 
+from app.auth import get_current_user_id
 from app.config import settings
 from integrations.audio_service import AudioService
 from integrations.meta_oauth import (
@@ -119,11 +120,12 @@ async def _consume_oauth_state(state: str) -> Optional[dict]:
 # --- Rotas ---
 
 @router.post("/oauth/start", response_model=OauthStartResponse)
-async def meta_oauth_start(req: OauthStartRequest):
+async def meta_oauth_start(req: OauthStartRequest, current_user_id: str = Depends(get_current_user_id)):
     """
     Inicia o fluxo OAuth 2.0 PKCE para Embedded Signup da Meta.
     O mobile abre `auth_url` em um WebBrowser (expo-auth-session ou Linking).
     """
+    user_id = current_user_id or req.user_id
     redirect_uri = settings.META_OAUTH_REDIRECT_URI
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="META_OAUTH_REDIRECT_URI não configurado.")
@@ -132,16 +134,19 @@ async def meta_oauth_start(req: OauthStartRequest):
     pkce = generate_pkce()
     auth_url = build_oauth_url(redirect_uri=redirect_uri, state=state, pkce=pkce)
 
-    await _store_oauth_state(state, req.user_id, pkce.verifier)
+    await _store_oauth_state(state, user_id, pkce.verifier)
     return OauthStartResponse(auth_url=auth_url, state=state)
 
 
 @router.post("/oauth/callback")
-async def meta_oauth_callback(req: OauthCallbackRequest):
+async def meta_oauth_callback(req: OauthCallbackRequest, current_user_id: str = Depends(get_current_user_id)):
     """
     Recebe o `code` do redirect da Meta. Valida state (anti-CSRF) e troca
     code por token usando o PKCE verifier persistido.
     """
+    if current_user_id and current_user_id != req.user_id:
+        raise HTTPException(status_code=403, detail="Não autorizado a manipular este usuário.")
+
     stored = await _consume_oauth_state(req.state)
     if not stored:
         raise HTTPException(status_code=400, detail="State inválido ou expirado.")
@@ -190,8 +195,11 @@ async def meta_oauth_callback(req: OauthCallbackRequest):
 
 
 @router.get("/status/{user_id}", response_model=StatusResponse)
-async def meta_status(user_id: str):
+async def meta_status(user_id: str, current_user_id: str = Depends(get_current_user_id)):
     """Consulta o status de conexão Meta Cloud API do MEI."""
+    if current_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+
     resp = supabase_admin.table("profiles").select(
         "meta_status, meta_phone_number, meta_waba_id"
     ).eq("id", user_id).single().execute()
@@ -207,8 +215,11 @@ async def meta_status(user_id: str):
 
 
 @router.delete("/disconnect/{user_id}")
-async def meta_disconnect(user_id: str):
+async def meta_disconnect(user_id: str, current_user_id: str = Depends(get_current_user_id)):
     """Desconecta o WhatsApp Cloud API deste MEI limpando os campos meta_*."""
+    if current_user_id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+
     supabase_admin.table("profiles").update({
         "meta_status": "disconnected",
         "meta_access_token": None,
@@ -515,11 +526,14 @@ async def meta_webhook_inbound(request: Request):
 
 
 @router.post("/send-test")
-async def meta_send_test(req: SendTestRequest):
+async def meta_send_test(req: SendTestRequest, current_user_id: str = Depends(get_current_user_id)):
     """
     Envia uma mensagem de teste (texto) para validar a integração.
     Útil diagnóstico pós-conexão; em produção, o webhook inbound substitui.
     """
+    if current_user_id != req.user_id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+
     resp = supabase_admin.table("profiles").select(
         "meta_phone_number_id, meta_access_token"
     ).eq("id", req.user_id).single().execute()
