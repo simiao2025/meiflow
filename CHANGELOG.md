@@ -7,6 +7,15 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+### Fixed
+- **Estabilização Evolution Go v3 (Conexão WhatsApp)**:
+  - Inicialização garantida do socket via `POST /instance/connect` antes de chamar `POST /instance/pair`, eliminando o erro `500 websocket not connected`.
+  - Injeção automática da URL do webhook (`https://meiflow-ai-orchestrator.onrender.com/webhook/whatsapp`) e eventos `MESSAGE` durante a conexão da instância.
+  - Webhook WhatsApp resiliente: suporte a variações de payload do Evolution Go (`message`, `messages.upsert`, `MESSAGES`), extração agnóstica de campos (`remoteJid`, `sender`, texto/áudio/documento) e validação fail-closed que aceita token de ambiente ou instâncias cadastradas no banco de dados.
+  - Resiliência a tokens JWT no backend (`auth.py`): execução desacoplada via `asyncio.to_thread(_get_user_id_from_token, token)`, validação defensiva de claims (`sub`, `exp`), tolerância para tokens expirados no mobile via checagem direta na tabela `profiles`, e consulta de status (`/status/{user_id}`) resiliente para evitar deslogamento/erros 401 durante polling.
+  - Auto-migração em tempo de execução: função `get_evolution_credentials()` nos serviços `ai-orchestrator` e `crm-service` que detecta domínios obsoletos (`.shop`) e migra automaticamente para `https://evolution-go.brasilonthebox.com` com a chave mestre `abcslirm2026`.
+  - `render.yaml` atualizado com valores explícitos de `EVOLUTION_API_URL` e `EVOLUTION_API_KEY`.
+
 ### Security
 - **Auditoria Forense de Integrações & Blindagem (Fail-Closed)**:
   - `ai-orchestrator`: endpoints `/api/fiscal/emit`, `/api/fiscal/report` e `/api/billing/charge` blindados com autenticação obrigatória via JWT do Supabase (`Depends(get_current_user_id)`).

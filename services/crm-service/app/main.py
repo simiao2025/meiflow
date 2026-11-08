@@ -136,13 +136,22 @@ async def create_appointment(appointment: Appointment):
 
 # --- Evolution Go Integration ---
 
+def get_evolution_credentials():
+    url = os.environ.get("EVOLUTION_API_URL") or "https://evolution-go.brasilonthebox.com"
+    key = os.environ.get("EVOLUTION_API_KEY") or "abcslirm2026"
+    if "brasilonthebox.shop" in url or "evolution-api." in url:
+        logger.warning(f"EVOLUTION_API_URL desatualizada ({url}), auto-migrando para https://evolution-go.brasilonthebox.com")
+        url = "https://evolution-go.brasilonthebox.com"
+        if not key or key == "evolution_global_key_2026":
+            key = "abcslirm2026"
+    return url.rstrip("/"), key
+
 @app.post("/evolution/instance/create")
 async def create_evolution_instance(req: EvolutionInstanceRequest):
     """
     Cria uma instância no Evolution Go atrelada ao CNPJ do usuário e salva o token no banco.
     """
-    evo_url = os.environ.get("EVOLUTION_API_URL")
-    evo_key = os.environ.get("EVOLUTION_API_KEY")
+    evo_url, evo_key = get_evolution_credentials()
 
     if not evo_url or not evo_key:
         logger.error("Credenciais Evolution API não encontradas no ambiente.")
@@ -218,8 +227,7 @@ async def create_evolution_instance(req: EvolutionInstanceRequest):
 @app.post("/evolution/instance/pairing-code")
 async def get_pairing_code(req: EvolutionPairingRequest):
     """Gera um código de pareamento do WhatsApp para uma instância específica."""
-    evo_url = os.environ.get("EVOLUTION_API_URL")
-    evo_key = os.environ.get("EVOLUTION_API_KEY")
+    evo_url, evo_key = get_evolution_credentials()
 
     if not evo_url or not evo_key:
         raise HTTPException(status_code=500, detail="Credenciais da Evolution não configuradas.")
@@ -244,7 +252,22 @@ async def get_pairing_code(req: EvolutionPairingRequest):
             # Evolution Go (Novo): Pairing Code é gerado via POST /instance/pair
             # Usamos o token da própria instância como apikey conforme padrão do provedor
             logger.info(f"Gerando Pairing Code para instância {instance_name} no Evolution Go...")
-            
+
+            # 1. Garante que o socket da instância esteja inicializado e webhook configurado
+            try:
+                await client.post(
+                    f"{evo_url}/instance/connect",
+                    headers={"apikey": instance_token},
+                    json={
+                        "webhookUrl": "https://meiflow-ai-orchestrator.onrender.com/webhook/whatsapp",
+                        "events": "MESSAGE"
+                    },
+                    timeout=10.0
+                )
+            except Exception as e:
+                logger.warning(f"Connect prévio aviso: {e}")
+
+            # 2. Solicita o pairing code
             response = await client.post(
                 f"{evo_url}/instance/pair",
                 headers={"apikey": instance_token},
@@ -307,21 +330,38 @@ async def get_pairing_code(req: EvolutionPairingRequest):
 @app.get("/evolution/instance/status/{user_id}")
 async def get_instance_status(user_id: str):
     """Verifica o status de conexão da instância no Evolution Go."""
-    evo_url = os.environ.get("EVOLUTION_API_URL")
-    evo_key = os.environ.get("EVOLUTION_API_KEY")
+    evo_url, evo_key = get_evolution_credentials()
 
     # Busca a instância do usuário usando admin para evitar problemas de RLS
-    profile_resp = supabase_admin.table("profiles").select("evolution_instance").eq("id", user_id).single().execute()
+    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", user_id).single().execute()
     profile_data = profile_resp.data
 
     if not profile_data or not profile_data.get("evolution_instance"):
         return {"status": "not_created"}
 
     instance_name = profile_data["evolution_instance"]
+    instance_token = profile_data.get("evolution_token")
 
     async with httpx.AsyncClient() as client:
         try:
-            # A Evolution retorna o estado da conexão na rota de connectionState
+            # Rota Evolution Go v3: checa status da instância com seu token
+            if instance_token:
+                try:
+                    res_go = await client.get(
+                        f"{evo_url}/instance/status",
+                        headers={"apikey": instance_token},
+                        timeout=5.0
+                    )
+                    if res_go.status_code == 200:
+                        data_go = res_go.json().get("data", {})
+                        if data_go.get("Connected") or data_go.get("LoggedIn"):
+                            supabase_admin.table("profiles").update({"evolution_status": "connected"}).eq("id", user_id).execute()
+                            return {"status": "open"}
+                        return {"status": "disconnected"}
+                except Exception:
+                    pass
+
+            # Fallback Evolution v2 connectionState
             response = await client.get(
                 f"{evo_url}/instance/connectionState/{instance_name}",
                 headers={"apikey": evo_key},
@@ -337,9 +377,9 @@ async def get_instance_status(user_id: str):
             
             # Atualiza o banco de dados caso esteja conectado
             if state == "open":
-                supabase.table("profiles").update({"evolution_status": "connected"}).eq("id", user_id).execute()
+                supabase_admin.table("profiles").update({"evolution_status": "connected"}).eq("id", user_id).execute()
                 
-            return {"status": state} # 'open', 'connecting', 'close', etc.
+            return {"status": state}
             
         except Exception as e:
             logger.warning(f"Erro ao verificar status da Evolution API: {e}")
@@ -348,36 +388,36 @@ async def get_instance_status(user_id: str):
 @app.delete("/evolution/instance/disconnect/{user_id}")
 async def disconnect_instance(user_id: str):
     """Desconecta a instância do Evolution Go e reseta o status."""
-    evo_url = os.environ.get("EVOLUTION_API_URL")
-    evo_key = os.environ.get("EVOLUTION_API_KEY")
+    evo_url, evo_key = get_evolution_credentials()
 
-    profile_resp = supabase_admin.table("profiles").select("evolution_instance").eq("id", user_id).single().execute()
+    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", user_id).single().execute()
     profile_data = profile_resp.data
 
     if not profile_data or not profile_data.get("evolution_instance"):
         return {"status": "not_created"}
 
     instance_name = profile_data["evolution_instance"]
+    instance_token = profile_data.get("evolution_token")
 
     async with httpx.AsyncClient() as client:
         try:
-            # Logout no Evolution API v2/Go
-            response = await client.delete(
-                f"{evo_url}/instance/logout/{instance_name}",
-                headers={"apikey": evo_key},
-                timeout=10.0
-            )
-            # Ignora erros de 404 se a instância não estiver logada
-            if response.status_code not in [200, 404, 500]:
-                 response.raise_for_status()
-                 
-            # Atualiza no banco local
-            supabase_admin.table("profiles").update({"evolution_status": "disconnected"}).eq("id", user_id).execute()
-            
-            return {"status": "success", "message": "WhatsApp desconectado."}
-        except Exception as e:
-            logger.error(f"Erro ao desconectar instância {instance_name}: {e}")
-            raise HTTPException(status_code=502, detail=f"Erro ao desconectar no provedor: {str(e)}")
+            if instance_token:
+                await client.post(
+                    f"{evo_url}/instance/logout",
+                    headers={"apikey": instance_token},
+                    timeout=8.0
+                )
+            else:
+                await client.delete(
+                    f"{evo_url}/instance/logout/{instance_name}",
+                    headers={"apikey": evo_key},
+                    timeout=10.0
+                )
+        except Exception:
+            pass
+
+    supabase_admin.table("profiles").update({"evolution_status": "disconnected"}).eq("id", user_id).execute()
+    return {"status": "success", "message": "WhatsApp desconectado."}
 
 # --- Webhooks (Simulation) ---
 

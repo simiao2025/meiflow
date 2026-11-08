@@ -15,9 +15,9 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: EVOLUTION_API_URL
-        sync: false
+        value: https://evolution-go.brasilonthebox.com
       - key: EVOLUTION_API_KEY
-        sync: false
+        value: abcslirm2026
       - key: INTERNAL_API_KEY
         value: meiflow_secret_2026_internal
       - key: CRM_SERVICE_URL
@@ -40,8 +40,8 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: EVOLUTION_API_URL
-        sync: false
+        value: https://evolution-go.brasilonthebox.com
       - key: EVOLUTION_API_KEY
-        sync: false
+        value: abcslirm2026
       - key: INTERNAL_API_KEY
         value: meiflow_secret_2026_internal

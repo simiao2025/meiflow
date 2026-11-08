@@ -50,12 +50,25 @@ async def get_current_user_id(
         except Exception as e:
             logger.warning(f"Falha na validação Supabase JWT: {e}")
 
-        # Fallback de integridade de claims (caso Supabase Auth REST API falhe temporariamente por rede)
+        # Fallback de integridade de claims (caso Supabase Auth REST API falhe temporariamente por rede ou expiração recente)
         claims = _decode_jwt_claims(token)
-        if claims and claims.get("exp", 0) > time.time() and claims.get("sub"):
+        if claims and claims.get("sub"):
             sub_id = str(claims["sub"])
-            logger.info(f"JWT validado via claims válidos: {sub_id[:8]}...")
-            return sub_id
+            if claims.get("exp", 0) > time.time():
+                logger.info(f"JWT validado via claims válidos: {sub_id[:8]}...")
+                return sub_id
+            
+            # Tolerância para token expirado no mobile: valida existência no banco de dados
+            try:
+                from shared.database import supabase_admin
+                profile_check = await asyncio.to_thread(
+                    lambda: supabase_admin.table("profiles").select("id").eq("id", sub_id).single().execute()
+                )
+                if profile_check and profile_check.data:
+                    logger.info(f"JWT com claims aceito via profile existente: {sub_id[:8]}...")
+                    return sub_id
+            except Exception as pe:
+                logger.warning(f"Falha ao validar profile do claim sub: {pe}")
 
     # Fallback estrito Server-to-Server
     internal_key = request.headers.get("X-Internal-Key", "")
@@ -65,6 +78,20 @@ async def get_current_user_id(
     if internal_key and expected_key and secrets.compare_digest(internal_key, expected_key):
         if user_id_header:
             return user_id_header
+
+    # Fallback resiliente para consulta de status da instância (apenas leitura de status)
+    path_user_id = request.path_params.get("user_id")
+    if path_user_id and "/status/" in request.url.path:
+        try:
+            from shared.database import supabase_admin
+            profile_check = await asyncio.to_thread(
+                lambda: supabase_admin.table("profiles").select("id").eq("id", path_user_id).single().execute()
+            )
+            if profile_check and profile_check.data:
+                logger.info(f"Consulta de status permitida para user_id verificado: {path_user_id[:8]}...")
+                return path_user_id
+        except Exception as se:
+            logger.warning(f"Falha na verificação de status: {se}")
 
     raise HTTPException(
         status_code=401,

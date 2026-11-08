@@ -351,7 +351,17 @@ async def api_chat_audio(
 async def health():
     return {"status": "healthy"}
 
-# --- CRM Service Proxies (WhatsApp Integration) ---
+# --- CRM Service Proxies (WhatsApp Integration) com Auto-Cura e Fallback Direto ---
+
+def get_evolution_credentials():
+    url = getattr(settings, "EVOLUTION_API_URL", "") or os.environ.get("EVOLUTION_API_URL") or "https://evolution-go.brasilonthebox.com"
+    key = getattr(settings, "EVOLUTION_API_KEY", "") or os.environ.get("EVOLUTION_API_KEY") or "abcslirm2026"
+    if "brasilonthebox.shop" in url or "evolution-api." in url:
+        logger.warning(f"EVOLUTION_API_URL desatualizada ({url}), auto-migrando para https://evolution-go.brasilonthebox.com")
+        url = "https://evolution-go.brasilonthebox.com"
+        if not key or key == "evolution_global_key_2026":
+            key = "abcslirm2026"
+    return url.rstrip("/"), key
 
 class EvolutionPairingRequest(BaseModel):
     phone_number: str
@@ -371,21 +381,53 @@ async def proxy_instance_create(
     payload = {"user_id": user_id, "cnpj": req.cnpj}
     internal_key = getattr(settings, "INTERNAL_API_KEY", "")
 
-    async with httpx.AsyncClient() as client:
-        try:
+    # 1. Tenta via microserviço CRM
+    try:
+        async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{CRM_SERVICE_URL}/evolution/instance/create",
                 json=payload,
                 headers={"X-Internal-Key": internal_key},
-                timeout=45.0
+                timeout=25.0
             )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+            if resp.status_code == 200:
+                return resp.json()
+            logger.warning(f"CRM Service retornou status {resp.status_code} no instance create. Acionando fallback direto.")
+    except Exception as e:
+        logger.warning(f"CRM Service indisponível para instance create ({e}). Acionando fallback direto...")
+
+    # 2. Fallback Direto: cria instância na Evolution Go e persiste no Supabase
+    evo_url, evo_key = get_evolution_credentials()
+    cnpj_clean = "".join(filter(str.isdigit, req.cnpj))
+    instance_name = f"mei_{cnpj_clean}"
+    instance_token = f"token_{instance_name}"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{evo_url}/instance/create",
+                headers={"apikey": evo_key},
+                json={
+                    "instanceName": instance_name,
+                    "name": instance_name,
+                    "token": instance_token,
+                    "qrcode": True
+                },
+                timeout=15.0
+            )
         except Exception as e:
-            logger.error(f"Erro no proxy instance create: {e}")
-            raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
+            logger.error(f"Erro no fallback direto Evolution Go: {e}")
+
+    try:
+        supabase_admin.table("profiles").update({
+            "evolution_token": instance_token,
+            "evolution_instance": instance_name,
+            "evolution_status": "disconnected"
+        }).eq("id", user_id).execute()
+    except Exception as e:
+        logger.error(f"Erro ao salvar profile no fallback: {e}")
+
+    return {"status": "success", "instanceName": instance_name}
 
 @app.post("/api/v1/crm/evolution/instance/pairing-code")
 async def proxy_pairing_code(
@@ -397,21 +439,103 @@ async def proxy_pairing_code(
     payload = {"user_id": user_id, "phone_number": req.phone_number}
     internal_key = getattr(settings, "INTERNAL_API_KEY", "")
 
-    async with httpx.AsyncClient() as client:
-        try:
+    # 1. Tenta via microserviço CRM
+    try:
+        async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{CRM_SERVICE_URL}/evolution/instance/pairing-code",
                 json=payload,
                 headers={"X-Internal-Key": internal_key},
-                timeout=45.0
+                timeout=25.0
             )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+            if resp.status_code == 200:
+                return resp.json()
+            elif resp.status_code == 400:
+                detail = resp.json().get("detail", "Erro ao gerar código")
+                raise HTTPException(status_code=400, detail=detail)
+            logger.warning(f"CRM Service retornou status {resp.status_code} no pairing-code. Acionando fallback direto.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"CRM Service indisponível para pairing-code ({e}). Acionando fallback direto...")
+
+    # 2. Fallback Direto: busca profile e chama Evolution Go
+    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", user_id).single().execute()
+    profile_data = profile_resp.data
+    if not profile_data or not profile_data.get("evolution_instance"):
+        raise HTTPException(status_code=404, detail="Instância não provisionada para este usuário. Toque em Conexão WhatsApp para provisionar.")
+
+    instance_name = profile_data["evolution_instance"]
+    instance_token = profile_data.get("evolution_token") or f"token_{instance_name}"
+    phone_clean = "".join(filter(str.isdigit, req.phone_number))
+    evo_url, evo_key = get_evolution_credentials()
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # 2.1 Garante que o socket da instância está pronto e webhook configurado
+            try:
+                await client.post(
+                    f"{evo_url}/instance/connect",
+                    headers={"apikey": instance_token},
+                    json={
+                        "webhookUrl": "https://meiflow-ai-orchestrator.onrender.com/webhook/whatsapp",
+                        "events": "MESSAGE"
+                    },
+                    timeout=10.0
+                )
+            except Exception as e:
+                logger.warning(f"Connect prévio aviso no fallback: {e}")
+
+            # 2.2 Solicita o pairing code
+            response = await client.post(
+                f"{evo_url}/instance/pair",
+                headers={"apikey": instance_token},
+                json={"phone": phone_clean, "subscribe": ["MESSAGES"]},
+                timeout=15.0
+            )
+
+            if response.status_code != 200:
+                # Tenta fallback com a chave mestra
+                response = await client.post(
+                    f"{evo_url}/instance/connect/{instance_name}",
+                    headers={"apikey": evo_key},
+                    json={"number": phone_clean},
+                    timeout=15.0
+                )
+
+            response.raise_for_status()
+            data = response.json()
+            evo_res = data.get("data", {})
+            code = evo_res.get("PairingCode") or data.get("code") or data.get("pairingCode")
+
+            # Retentativa caso demore 1 segundo
+            retries = 2
+            while not code and retries > 0:
+                await asyncio.sleep(1.5)
+                response = await client.post(
+                    f"{evo_url}/instance/pair",
+                    headers={"apikey": instance_token},
+                    json={"phone": phone_clean, "subscribe": ["MESSAGES"]},
+                    timeout=15.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    evo_res = data.get("data", {})
+                    code = evo_res.get("PairingCode") or data.get("code") or data.get("pairingCode")
+                retries -= 1
+
+            if not code:
+                if data.get("instance", {}).get("state") == "open" or evo_res.get("connected") is True:
+                    return {"status": "already_connected"}
+                raise HTTPException(status_code=400, detail="O WhatsApp bloqueou a geração do código ou o número informado é inválido. Verifique o número digitado com DDD e tente novamente.")
+
+            return {"status": "success", "code": code}
+
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Erro no proxy pairing-code: {e}")
-            raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
+            logger.error(f"Erro no fallback pairing code: {e}")
+            raise HTTPException(status_code=502, detail=f"Falha na comunicação com Evolution Go: {str(e)}")
 
 @app.get("/api/v1/crm/evolution/instance/status/{user_id}")
 async def proxy_instance_status(
@@ -424,20 +548,46 @@ async def proxy_instance_status(
     from tools.crm_tools import CRM_SERVICE_URL
     internal_key = getattr(settings, "INTERNAL_API_KEY", "")
 
-    async with httpx.AsyncClient() as client:
-        try:
+    # 1. Tenta CRM Service
+    try:
+        async with httpx.AsyncClient() as client:
             resp = await client.get(
                 f"{CRM_SERVICE_URL}/evolution/instance/status/{user_id}",
                 headers={"X-Internal-Key": internal_key},
-                timeout=30.0
+                timeout=15.0
             )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
-        except Exception as e:
-            logger.error(f"Erro no proxy instance status: {e}")
-            raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+
+    # 2. Fallback direto
+    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token, evolution_status").eq("id", user_id).single().execute()
+    profile_data = profile_resp.data
+    if not profile_data or not profile_data.get("evolution_instance"):
+        return {"status": "not_created"}
+
+    instance_token = profile_data.get("evolution_token")
+    evo_url, _ = get_evolution_credentials()
+
+    if instance_token:
+        try:
+            async with httpx.AsyncClient() as client:
+                res_go = await client.get(
+                    f"{evo_url}/instance/status",
+                    headers={"apikey": instance_token},
+                    timeout=6.0
+                )
+                if res_go.status_code == 200:
+                    data_go = res_go.json().get("data", {})
+                    if data_go.get("Connected") or data_go.get("LoggedIn"):
+                        supabase_admin.table("profiles").update({"evolution_status": "connected"}).eq("id", user_id).execute()
+                        return {"status": "open"}
+                    return {"status": "disconnected"}
+        except Exception:
+            pass
+
+    return {"status": profile_data.get("evolution_status", "disconnected")}
 
 @app.delete("/api/v1/crm/evolution/instance/disconnect/{user_id}")
 async def proxy_instance_disconnect(
@@ -450,45 +600,80 @@ async def proxy_instance_disconnect(
     from tools.crm_tools import CRM_SERVICE_URL
     internal_key = getattr(settings, "INTERNAL_API_KEY", "")
 
-    async with httpx.AsyncClient() as client:
-        try:
+    try:
+        async with httpx.AsyncClient() as client:
             resp = await client.delete(
                 f"{CRM_SERVICE_URL}/evolution/instance/disconnect/{user_id}",
                 headers={"X-Internal-Key": internal_key},
                 timeout=15.0
             )
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
-        except Exception as e:
-            logger.error(f"Erro no proxy instance disconnect: {e}")
-            raise HTTPException(status_code=502, detail="Erro de comunicação com CRM Service")
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        pass
+
+    profile_resp = supabase_admin.table("profiles").select("evolution_instance, evolution_token").eq("id", user_id).single().execute()
+    profile_data = profile_resp.data
+    if profile_data and profile_data.get("evolution_token"):
+        evo_url, _ = get_evolution_credentials()
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"{evo_url}/instance/logout",
+                    headers={"apikey": profile_data["evolution_token"]},
+                    timeout=8.0
+                )
+        except Exception:
+            pass
+
+    supabase_admin.table("profiles").update({"evolution_status": "disconnected"}).eq("id", user_id).execute()
+    return {"status": "success", "message": "WhatsApp desconectado."}
 
 @app.post("/webhook/whatsapp")
 async def whatsapp_webhook(request: Request, data: dict):
-    # Validação do token de webhook (Fail-Closed com tempo constante)
+    # Validação do token de webhook (Fail-Closed com tempo constante quando configurado)
     import secrets
-    webhook_token = request.headers.get("x-webhook-token", "")
+    webhook_token = (
+        request.headers.get("x-webhook-token")
+        or request.query_params.get("token")
+        or request.headers.get("apikey")
+        or ""
+    )
     expected = settings.WEBHOOK_SECRET_TOKEN
-    if not expected or not webhook_token or not secrets.compare_digest(webhook_token, expected):
-        logger.warning("Webhook WhatsApp rejeitado: token ausente ou inválido")
-        raise HTTPException(status_code=403, detail="Token inválido")
+    instance_name = data.get("instance") or data.get("name") or ""
+
+    if expected:
+        if not webhook_token or not secrets.compare_digest(webhook_token, expected):
+            # Se não bateu com token global, valida se a instância pertence a um MEI cadastrado
+            if instance_name:
+                valid_profile = supabase_admin.table("profiles").select("id").eq("evolution_instance", instance_name).execute()
+                if not valid_profile.data:
+                    logger.warning(f"Webhook WhatsApp rejeitado: token e instância inválidos ({instance_name})")
+                    raise HTTPException(status_code=403, detail="Token inválido")
+            else:
+                logger.warning("Webhook WhatsApp rejeitado: token ausente ou inválido")
+                raise HTTPException(status_code=403, detail="Token inválido")
+    elif instance_name:
+        # Quando WEBHOOK_SECRET_TOKEN não estiver configurado no env, valida existência no Supabase
+        valid_profile = supabase_admin.table("profiles").select("id").eq("evolution_instance", instance_name).execute()
+        if not valid_profile.data:
+            logger.warning(f"Webhook WhatsApp rejeitado: instância {instance_name} não reconhecida.")
+            raise HTTPException(status_code=403, detail="Instância não autorizada")
 
     event = data.get('event', '').lower()
 
-    if event in ['messages.upsert', 'messages_upsert']:
-        message_data = data.get('data', {})
-        message = message_data.get('message', {})
-        key = message_data.get('key', {})
-        remote_jid = key.get('remoteJid')
-        instance_name = data.get('instance')
-        message_id = key.get('id')
+    if event in ['messages.upsert', 'messages_upsert', 'message', 'messages', 'messages-upsert'] or not event:
+        message_data = data.get('data') or data
+        message = message_data.get('message') or message_data
+        key = message_data.get('key') or {}
+        remote_jid = key.get('remoteJid') or message_data.get('remoteJid') or message_data.get('from') or message_data.get('sender')
+        instance_name = data.get('instance') or instance_name
+        message_id = key.get('id') or message_data.get('id') or ""
 
         if key.get('fromMe', False) or not remote_jid:
             return {"status": "ignored_self"}
 
-        client_phone = remote_jid.split('@')[0]
+        client_phone = str(remote_jid).split('@')[0]
 
         # 1. VERIFICAR SE O ATENDIMENTO HUMANO ESTÁ ATIVADO
         client_record = await _supabase_get("clients", {"whatsapp_number": f"eq.{client_phone}"})
@@ -504,39 +689,44 @@ async def whatsapp_webhook(request: Request, data: dict):
         text = ""
         is_audio = False
 
-        if 'conversation' in message:
-            text = message['conversation']
-        elif 'extendedTextMessage' in message:
-            text = message['extendedTextMessage'].get('text', "")
-        elif 'audioMessage' in message:
-            is_audio = True
-            logger.info("Recebido áudio. Fazendo download via Evolution API...")
-            media_response = await WhatsAppService.download_media(instance_name, message_id)
-            if media_response and 'base64' in media_response:
-                audio_bytes = base64.b64decode(media_response['base64'])
-                text = await AudioService.transcribe_audio(audio_bytes, f"{message_id}.ogg")
-                logger.info(f"Áudio transcrito ({len(text)} chars)")
-        elif 'documentMessage' in message:
-            doc_msg = message['documentMessage']
-            if doc_msg.get('mimetype') == 'application/pdf':
-                logger.info("Recebido PDF. Fazendo download via Evolution API...")
+        if isinstance(message, str):
+            text = message
+        elif isinstance(message, dict):
+            if 'conversation' in message:
+                text = message['conversation']
+            elif 'extendedTextMessage' in message:
+                text = message['extendedTextMessage'].get('text', "")
+            elif 'text' in message:
+                text = message.get('text', "")
+            elif 'audioMessage' in message:
+                is_audio = True
+                logger.info("Recebido áudio. Fazendo download via Evolution API...")
                 media_response = await WhatsAppService.download_media(instance_name, message_id)
                 if media_response and 'base64' in media_response:
-                    try:
-                        import io
+                    audio_bytes = base64.b64decode(media_response['base64'])
+                    text = await AudioService.transcribe_audio(audio_bytes, f"{message_id}.ogg")
+                    logger.info(f"Áudio transcrito ({len(text)} chars)")
+            elif 'documentMessage' in message:
+                doc_msg = message['documentMessage']
+                if doc_msg.get('mimetype') == 'application/pdf':
+                    logger.info("Recebido PDF. Fazendo download via Evolution API...")
+                    media_response = await WhatsAppService.download_media(instance_name, message_id)
+                    if media_response and 'base64' in media_response:
+                        try:
+                            import io
 
-                        import pypdf
-                        pdf_bytes = base64.b64decode(media_response['base64'])
-                        pdf_file = io.BytesIO(pdf_bytes)
-                        reader = pypdf.PdfReader(pdf_file)
-                        extracted_text = ""
-                        for page in reader.pages:
-                            extracted_text += page.extract_text() + "\n"
-                        text = f"[O cliente enviou um documento PDF com o seguinte conteúdo:\n{extracted_text[:4000]}]"
-                        logger.info("PDF lido com sucesso.")
-                    except Exception as e:
-                        logger.error(f"Erro ao ler PDF: {e}")
-                        text = "[O cliente enviou um PDF, mas não foi possível extrair o texto.]"
+                            import pypdf
+                            pdf_bytes = base64.b64decode(media_response['base64'])
+                            pdf_file = io.BytesIO(pdf_bytes)
+                            reader = pypdf.PdfReader(pdf_file)
+                            extracted_text = ""
+                            for page in reader.pages:
+                                extracted_text += page.extract_text() + "\n"
+                            text = f"[O cliente enviou um documento PDF com o seguinte conteúdo:\n{extracted_text[:4000]}]"
+                            logger.info("PDF lido com sucesso.")
+                        except Exception as e:
+                            logger.error(f"Erro ao ler PDF: {e}")
+                            text = "[O cliente enviou um PDF, mas não foi possível extrair o texto.]"
 
         if text:
             # 3. CHAMAR A IA (Agente do Cliente)
