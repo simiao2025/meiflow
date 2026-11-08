@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { supabase } from './supabase';
+import { supabase, getFreshAuthToken } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
@@ -19,16 +19,15 @@ const checkConnection = async (): Promise<boolean> => {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Obtém o token JWT ativo do Supabase Auth.
- * O backend validará esse token para identificar o usuário —
- * eliminando a necessidade de enviar user_id no payload.
+ * Obtém o token JWT ativo do Supabase Auth de forma resiliente.
+ * Se expirado, força o refresh automático.
  */
 async function getAuthToken(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
+  const token = await getFreshAuthToken();
+  if (!token) {
     throw new Error('Sessão expirada. Faça login novamente.');
   }
-  return session.access_token;
+  return token;
 }
 
 async function fetchWithRetry(

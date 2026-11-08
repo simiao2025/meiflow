@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
-import { supabase } from '../services/supabase';
+import { supabase, getFreshAuthToken } from '../services/supabase';
 import { useAuthStore } from '../stores/authStore';
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
@@ -67,8 +67,7 @@ export function useAssistantChat(provider: string = 'openai') {
       // 90s para cold start do Render + iterações LangGraph (LLM → tools → LLM)
       const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAuthToken();
 
       const response = await fetch(`${apiUrl}/api/v1/chat`, {
         method: 'POST',
@@ -131,8 +130,7 @@ export function useAssistantChat(provider: string = 'openai') {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAuthToken();
 
       const response = await fetch(`${apiUrl}/api/v1/chat/audio`, {
         method: 'POST',

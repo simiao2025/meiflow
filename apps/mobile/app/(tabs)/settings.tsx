@@ -1,25 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  Switch,
-  Alert,
-  Linking,
-  Modal,
-  TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform
+  Switch, 
+  Alert, 
+  Linking, 
+  Modal, 
+  TextInput, 
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform 
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../../services/supabase';
+import { supabase, getFreshAuthToken } from '../../services/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useThemeColors, Palette, Typography } from '../../constants/theme';
@@ -47,6 +47,13 @@ export default function SettingsScreen() {
   const [metaLoading, setMetaLoading] = useState(false);
 
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
+
+  // Sincroniza o perfil atualizado ao focar na tela de Ajustes
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [])
+  );
 
   // Limpa o polling se o modal for fechado ou componente desmontado
   useEffect(() => {
@@ -88,15 +95,14 @@ export default function SettingsScreen() {
     }
     setPairingStatus('loading');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || '';
+      const token = await getFreshAuthToken();
       const response = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/pairing-code`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': token ? `Bearer ${token}` : ''
         },
-        body: JSON.stringify({ phone_number: whatsappNumber })
+        body: JSON.stringify({ phone_number: whatsappNumber, user_id: user?.id })
       });
       const textData = await response.text();
       let data: any = {};
@@ -129,10 +135,9 @@ export default function SettingsScreen() {
     
     pollingInterval.current = setInterval(async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token || '';
+        const token = await getFreshAuthToken();
         const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/status/${user?.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': token ? `Bearer ${token}` : '' }
         });
         const data = await res.json();
         
@@ -262,22 +267,25 @@ export default function SettingsScreen() {
                   : "🔴 Robô não provisionado"
             }
             onPress={async () => {
-              if (profile?.evolution_status === 'connected') {
+              // Garante que o perfil mais recente seja carregado
+              await refreshProfile();
+              const curProfile = useAuthStore.getState().profile || profile;
+
+              if (curProfile?.evolution_status === 'connected') {
                 Alert.alert('WhatsApp', 'Seu robô está online e operando.');
-              } else if (profile?.evolution_instance) {
+              } else if (curProfile?.evolution_instance) {
                 setPairingModalVisible(true);
-              } else if (profile?.cnpj) {
+              } else if (curProfile?.cnpj) {
                 // Lógica de Auto-Cura para usuários antigos
                 try {
-                  const { data: { session: s } } = await supabase.auth.getSession();
-                  const token = s?.access_token || '';
+                  const token = await getFreshAuthToken();
                   const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
+                      'Authorization': token ? `Bearer ${token}` : ''
                     },
-                    body: JSON.stringify({ cnpj: profile.cnpj })
+                    body: JSON.stringify({ cnpj: curProfile.cnpj, user_id: user?.id })
                   });
                   const textData = await res.text();
                   let data: any = {};
@@ -288,7 +296,7 @@ export default function SettingsScreen() {
                   }
                   if (!res.ok) throw new Error(data.detail || 'Falha ao criar instância. Tente novamente mais tarde.');
                   await refreshProfile();
-                  Alert.alert('Sucesso', 'Robô provisionado! Agora você pode vincular seu celular.');
+                  setPairingModalVisible(true);
                 } catch (e: any) {
                   Alert.alert('Erro', e.message);
                 }

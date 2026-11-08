@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useThemeColors, Typography, Palette } from '../../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../../services/supabase';
+import { supabase, getFreshAuthToken } from '../../../services/supabase';
 import { useAuthStore } from '../../../stores/authStore';
 import { useRouter } from 'expo-router';
 
@@ -45,10 +45,10 @@ export default function BankAccountsScreen() {
   };
 
   const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const token = await getFreshAuthToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session?.access_token || ''}`,
+      'Authorization': token ? `Bearer ${token}` : '',
     };
   };
 

@@ -13,7 +13,7 @@ import {
   ImageBackground
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../services/supabase';
+import { supabase, getFreshAuthToken } from '../services/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,16 +138,16 @@ export default function OnboardingScreen() {
           return;
         }
         
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token || '';
+        const token = await getFreshAuthToken();
         await fetch(`${apiUrl}/api/v1/crm/evolution/instance/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': token ? `Bearer ${token}` : '',
           },
           body: JSON.stringify({
-            cnpj: cnpj
+            cnpj: cnpj,
+            user_id: user?.id,
           })
         });
       } catch (err) {

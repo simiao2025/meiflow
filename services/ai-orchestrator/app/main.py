@@ -509,40 +509,46 @@ async def proxy_pairing_code(
                 timeout=15.0
             )
 
-            if response.status_code != 200:
-                # Tenta fallback com a chave mestra
-                response = await client.post(
-                    f"{evo_url}/instance/connect/{instance_name}",
-                    headers={"apikey": evo_key},
-                    json={"number": phone_clean},
-                    timeout=15.0
-                )
+            code = None
+            data = {}
+            evo_res = {}
 
-            response.raise_for_status()
-            data = response.json()
-            evo_res = data.get("data", {})
-            code = evo_res.get("PairingCode") or data.get("code") or data.get("pairingCode")
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    evo_res = data.get("data", {}) if isinstance(data, dict) else {}
+                    code = evo_res.get("PairingCode") or evo_res.get("code") or data.get("code") or data.get("pairingCode")
+                except Exception:
+                    pass
+            else:
+                logger.warning(f"Evolution Go pair retornou status {response.status_code}: {response.text}")
 
-            # Retentativa caso demore 1 segundo
+            # Retentativa caso o socket estivesse sincronizando
             retries = 2
             while not code and retries > 0:
                 await asyncio.sleep(1.5)
-                response = await client.post(
+                retry_resp = await client.post(
                     f"{evo_url}/instance/pair",
                     headers={"apikey": instance_token},
                     json={"phone": phone_clean, "subscribe": ["MESSAGES"]},
                     timeout=15.0
                 )
-                if response.status_code == 200:
-                    data = response.json()
-                    evo_res = data.get("data", {})
-                    code = evo_res.get("PairingCode") or data.get("code") or data.get("pairingCode")
+                if retry_resp.status_code == 200:
+                    try:
+                        data = retry_resp.json()
+                        evo_res = data.get("data", {}) if isinstance(data, dict) else {}
+                        code = evo_res.get("PairingCode") or evo_res.get("code") or data.get("code") or data.get("pairingCode")
+                    except Exception:
+                        pass
                 retries -= 1
 
             if not code:
-                if data.get("instance", {}).get("state") == "open" or evo_res.get("connected") is True:
+                if (data and data.get("instance", {}).get("state") == "open") or (evo_res and evo_res.get("connected") is True):
                     return {"status": "already_connected"}
-                raise HTTPException(status_code=400, detail="O WhatsApp bloqueou a geração do código ou o número informado é inválido. Verifique o número digitado com DDD e tente novamente.")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Não foi possível gerar o código de pareamento no momento. Verifique se digitou o número com DDI e DDD (ex: 5563999999999) e tente novamente em alguns segundos."
+                )
 
             return {"status": "success", "code": code}
 

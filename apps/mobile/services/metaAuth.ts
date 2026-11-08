@@ -11,19 +11,11 @@
  * Nenhuma chave secreta fica no mobile. Apenas o JWT do Supabase é enviado.
  */
 import * as WebBrowser from 'expo-web-browser';
-import { supabase } from './supabase';
+import { supabase, getFreshAuthToken } from './supabase';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 WebBrowser.maybeCompleteAuthSession();
-
-async function getAuthToken(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error('Sessão expirada. Faça login novamente.');
-  }
-  return session.access_token;
-}
 
 export interface MetaOauthStartResponse {
   auth_url: string;
@@ -40,12 +32,12 @@ export interface MetaStatusResponse {
  * Etapa 1 — pede a auth_url ao backend (state + PKCE são gerados no servidor).
  */
 export async function startMetaOauth(userId: string): Promise<MetaOauthStartResponse> {
-  const token = await getAuthToken();
+  const token = await getFreshAuthToken();
   const resp = await fetch(`${API_BASE_URL}/api/v1/crm/meta/oauth/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': token ? `Bearer ${token}` : '',
     },
     body: JSON.stringify({ user_id: userId }),
   });
@@ -76,7 +68,7 @@ export async function pollMetaStatus(
   intervalMs = 2000,
   timeoutMs = 60000
 ): Promise<MetaStatusResponse> {
-  const token = await getAuthToken();
+  const token = await getFreshAuthToken();
   const start = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -84,7 +76,7 @@ export async function pollMetaStatus(
       try {
         const res = await fetch(
           `${API_BASE_URL}/api/v1/crm/meta/status/${userId}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { headers: { 'Authorization': token ? `Bearer ${token}` : '' } }
         );
         if (!res.ok) throw new Error('Falha ao consultar status Meta.');
         const data: MetaStatusResponse = await res.json();
@@ -120,10 +112,10 @@ export async function pollMetaStatus(
  * Desconecta o WhatsApp Cloud API deste MEI via backend.
  */
 export async function disconnectMeta(userId: string): Promise<void> {
-  const token = await getAuthToken();
+  const token = await getFreshAuthToken();
   const res = await fetch(`${API_BASE_URL}/api/v1/crm/meta/disconnect/${userId}`, {
     method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` },
+    headers: { 'Authorization': token ? `Bearer ${token}` : '' },
   });
   if (!res.ok) {
     throw new Error('Falha ao desconectar Meta Cloud API.');

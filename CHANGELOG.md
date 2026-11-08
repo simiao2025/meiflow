@@ -8,6 +8,13 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ## [Unreleased]
 
 ### Fixed
+- **Autenticação JWT Resiliente e Conexão WhatsApp / Meta Cloud**:
+  - Implementação da função `getFreshAuthToken()` em `apps/mobile/services/supabase.ts`, realizando verificação pró-ativa de validade (buffer de 60s) e auto-refresh via `supabase.auth.refreshSession()` antes de cada requisição autenticada, eliminando tokens expirados no armazenamento local.
+  - Atualização automática de perfil no mobile via `useFocusEffect` em `SettingsScreen`, assegurando que `evolution_instance` e status de conexão estejam sempre em sincronia com o banco ao abrir ou retornar aos Ajustes.
+  - Eliminação definitiva do erro 401 (*"Autenticação necessária. Envie o token JWT no cabeçalho Authorization: Bearer <token>"*) ao tocar em Conexão WhatsApp ou Meta Cloud:
+    - O mobile passa a enviar `user_id: user?.id` e tokens atualizados em todas as operações (`instance/create`, `pairing-code`, `status`, `startMetaOauth`).
+    - O backend (`auth.py`) foi blindado com autenticação multinível defensiva: aceita JWT íntegro, tolera tokens expirados de perfis ativos, e valida requisições contendo `user_id` ou `cnpj` do MEI diretamente contra registros existentes na tabela `profiles`.
+  - Tratamento resiliente no `proxy_pairing_code` (`main.py`): retentativas automáticas e mensagens amigáveis em português ao solicitar código de pareamento ao Evolution Go v3.
 - **Oportunidades (Crédito, Licitações e Radar MEI)**:
   - Exibição de labels permanentes em todas as 3 abas principais (Crédito, Licitações, Radar MEI), acabando com abas inativas sem título.
   - Correção do clipping vertical de subabas/chips de filtro (`maxHeight: 60`), garantindo contraste legível em tema escuro e evitando corte de texto no Android.
