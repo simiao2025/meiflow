@@ -9,7 +9,15 @@ from .config import settings
 class LLMFactory:
     @staticmethod
     def get_model(provider: str = None, model_name: str = None, temperature: float = 0.7):
-        provider = provider or settings.DEFAULT_LLM_PROVIDER
+        provider = provider or getattr(settings, "DEFAULT_LLM_PROVIDER", "openai")
+
+        # Fallback defensivo para provedores sem chave configurada no ambiente
+        if provider == "anthropic" and not getattr(settings, "ANTHROPIC_API_KEY", ""):
+            provider = "openai"
+        elif provider == "google" and not getattr(settings, "GOOGLE_API_KEY", ""):
+            provider = "openai"
+        elif provider == "groq" and not getattr(settings, "GROQ_API_KEY", ""):
+            provider = "openai"
 
         if provider == "openai":
             return ChatOpenAI(
@@ -36,4 +44,8 @@ class LLMFactory:
                 api_key=settings.GROQ_API_KEY
             )
         else:
-            raise ValueError(f"Provedor de LLM desconhecido: {provider}")
+            return ChatOpenAI(
+                model="gpt-4o",
+                temperature=temperature,
+                api_key=settings.OPENAI_API_KEY
+            )

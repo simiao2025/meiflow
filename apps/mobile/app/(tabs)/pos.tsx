@@ -17,10 +17,11 @@ export default function PosScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<'all' | 'service' | 'product'>('all');
   const [loading, setLoading] = useState(true);
-const [cart, setCart] = useState<{item: any, quantity: number}[]>([]);
-const [isCheckingOut, setIsCheckingOut] = useState(false);
-const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'>('dinheiro');
+  const [cart, setCart] = useState<{item: any, quantity: number}[]>([]);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'>('dinheiro');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -32,27 +33,40 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
   const loadItems = async () => {
     if (!user) return;
     setLoading(true);
-    // Only load products with stock > 0 for the POS
+    // Carrega tanto produtos quanto serviços ativos do catálogo
     const { data } = await supabase
       .from('catalog_items')
       .select('*')
       .eq('user_id', user.id)
-      .eq('type', 'product')
       .eq('is_active', true)
-      .gt('stock_quantity', 0)
       .order('name', { ascending: true });
       
     if (data) setItems(data);
     setLoading(false);
   };
 
+  const displayedItems = items.filter(item => {
+    if (filterType === 'service') return item.type === 'service';
+    if (filterType === 'product') {
+      return item.type === 'product' && (item.stock_quantity === undefined || item.stock_quantity === null || item.stock_quantity > 0);
+    }
+    // 'all': exibe serviços e produtos com estoque disponível
+    if (item.type === 'product' && typeof item.stock_quantity === 'number' && item.stock_quantity <= 0) {
+      return false;
+    }
+    return true;
+  });
+
   const addToCart = (product: any) => {
     setCart(prev => {
       const existing = prev.find(c => c.item.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock_quantity) {
-          Alert.alert('Atenção', 'Estoque insuficiente para adicionar mais.');
-          return prev;
+        // Validação de estoque apenas para produtos físicos com quantidade controlada
+        if (product.type === 'product' && typeof product.stock_quantity === 'number') {
+          if (existing.quantity >= product.stock_quantity) {
+            Alert.alert('Atenção', 'Estoque insuficiente para adicionar mais.');
+            return prev;
+          }
         }
         return prev.map(c => c.item.id === product.id ? { ...c, quantity: c.quantity + 1 } : c);
       }
@@ -110,12 +124,24 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
         throw itemsError;
       }
 
+      const hasServices = cart.some(c => c.item.type === 'service');
+
       Alert.alert(
         'Venda Concluída', 
-        'Venda registrada com sucesso e estoque atualizado.',
+        'Venda registrada com sucesso no caixa.',
         [
-          { text: 'Emitir NFC-e', onPress: () => Alert.alert('Em breve', 'Emissão de cupom fiscal requer certificado digital e será implementada na próxima fase.') },
-          { text: 'OK', onPress: () => { setCart([]); loadItems(); } }
+          hasServices ? { 
+            text: 'Emitir NFS-e', 
+            onPress: () => { 
+              setCart([]); 
+              loadItems(); 
+              router.push('/fiscal/emit'); 
+            } 
+          } : { 
+            text: 'Emitir NFC-e', 
+            onPress: () => Alert.alert('Em breve', 'Emissão de cupom fiscal NFC-e requer certificado digital A1.') 
+          },
+          { text: 'Concluir', onPress: () => { setCart([]); loadItems(); } }
         ]
       );
     } catch (e) {
@@ -141,9 +167,28 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
            </View>
         </View>
 
+        {/* Filtros de Tipo: Todos, Serviços, Produtos */}
+        <View style={styles.filterRow}>
+          {[
+            { key: 'all', label: 'Todos' },
+            { key: 'service', label: '🛠️ Serviços' },
+            { key: 'product', label: '📦 Produtos' },
+          ].map(f => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.typeChip, filterType === f.key && styles.typeChipActive]}
+              onPress={() => setFilterType(f.key as any)}
+            >
+              <Text style={[styles.typeChipText, filterType === f.key && styles.typeChipTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {loading ? <ActivityIndicator color={Colors.primary} size="large" style={{ marginTop: 40 }} /> : (
           <FlatList 
-            data={items} 
+            data={displayedItems} 
             keyExtractor={i => i.id} 
             numColumns={2}
             contentContainerStyle={styles.list}
@@ -151,6 +196,8 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
             renderItem={({ item }) => {
                const cartItem = cart.find(c => c.item.id === item.id);
                const qtyInCart = cartItem ? cartItem.quantity : 0;
+               const isService = item.type === 'service';
+
                return (
                  <TouchableOpacity 
                    style={[styles.productCard, qtyInCart > 0 && styles.productCardActive]} 
@@ -158,7 +205,11 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
                    onPress={() => addToCart(item)}
                  >
                     <View style={styles.productIconWrapper}>
-                      <Ionicons name="cube-outline" size={32} color={qtyInCart > 0 ? Colors.primary : Colors.textMuted} />
+                      <Ionicons 
+                        name={isService ? 'briefcase-outline' : 'cube-outline'} 
+                        size={32} 
+                        color={qtyInCart > 0 ? Colors.primary : Colors.textMuted} 
+                      />
                       {qtyInCart > 0 && (
                         <View style={styles.qtyBadge}>
                            <Text style={styles.qtyBadgeText}>{qtyInCart}</Text>
@@ -167,7 +218,11 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
                     </View>
                     <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
                     <Text style={styles.productPrice}>R$ {item.price.toFixed(2).replace('.', ',')}</Text>
-                    <Text style={styles.productStock}>{item.stock_quantity - qtyInCart} no estoque</Text>
+                    <Text style={styles.productStock}>
+                      {isService 
+                        ? (item.billing_unit ? `Por ${item.billing_unit}` : 'Serviço') 
+                        : `${(item.stock_quantity ?? 0) - qtyInCart} no estoque`}
+                    </Text>
                     
                     {qtyInCart > 0 && (
                       <TouchableOpacity 
@@ -182,10 +237,10 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
             }}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Ionicons name="cube-outline" size={48} color={Colors.textMuted} />
-                <Text style={styles.emptyText}>Nenhum produto com estoque disponível.</Text>
+                <Ionicons name="briefcase-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>Nenhum item disponível para venda.</Text>
                 <TouchableOpacity onPress={() => router.push('/catalog')} style={styles.emptyBtn}>
-                  <Text style={styles.emptyBtnText}>Cadastrar Produtos</Text>
+                  <Text style={styles.emptyBtnText}>Cadastrar Itens</Text>
                 </TouchableOpacity>
               </View>
             }
@@ -243,10 +298,34 @@ const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao'
 
 const getStyles = (Colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  header: { padding: 24, paddingTop: 60, flexDirection: 'row', alignItems: 'center' },
+  header: { padding: 24, paddingTop: 60, paddingBottom: 16, flexDirection: 'row', alignItems: 'center' },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   eyebrow: { color: Colors.primary, fontFamily: Typography.fonts.medium, fontSize: 10, letterSpacing: 2, marginBottom: 2 },
   h1: { color: Colors.text, fontFamily: Typography.fonts.display, fontSize: 24 },
+  
+  filterRow: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, gap: 10 },
+  typeChip: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 14, 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.1)' 
+  },
+  typeChipActive: { 
+    backgroundColor: 'rgba(16, 185, 129, 0.2)', 
+    borderColor: Colors.primary 
+  },
+  typeChipText: { 
+    color: '#94A3B8', 
+    fontSize: 13, 
+    fontFamily: Typography.fonts.medium 
+  },
+  typeChipTextActive: { 
+    color: '#FFF', 
+    fontFamily: Typography.fonts.bold 
+  },
+
   list: { paddingHorizontal: 24, paddingBottom: 150 },
   
   productCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },

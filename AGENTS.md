@@ -81,9 +81,11 @@
 - 🗄️ **Supabase Database**:
   - Migration 00019 aplicada (`meta_*` colunas em `profiles`).
   - Trigger `protect_meta_credentials()` criado em `public.profiles` para impedir adulteração de WABA ID / Token pelo cliente via REST PostgREST.
-- 📱 **Mobile & Compatibilidade de Produção**:
-  - Resíduo de `EXPO_PUBLIC_INTERNAL_KEY` purgado de `.env` e `.env.example`.
-  - Injeção de `Authorization: Bearer <token>` em `useAssistantChat.ts` e `onboarding.tsx`.
+- 📱 **Mobile & Usabilidade (Oportunidades, Vendas, IA e GPS)**:
+  - Oportunidades: labels visíveis em todas as abas principais e subabas (Crédito, Licitações, Radar MEI); remoção de clipping vertical (`maxHeight: 60`) nos chips de filtro; integração com ofertas reais via view `public.credit_offers`; atualização de notícias do Radar MEI para novembro de 2026/2027.
+  - Vendas (PDV): permitida a venda de serviços cadastrados em `catalog_items` (além de produtos físicos); filtros "Todos", "Serviços" e "Produtos"; atalho para emissão de NFS-e ao concluir venda de serviço.
+  - Assistente de IA: auto-fallback gracioso para OpenAI em `LLMFactory` caso modelos de terceiros (Anthropic, Google, Groq) não tenham chaves no Render; decodificação tolerante de claims e mensagens defensivas sem falsos alertas de desconexão.
+  - Localização / GPS: priorização de endereço textual (`clientAddress`) ao acionar Google Maps e Waze para navegação de alta precisão até a porta do cliente; validação de geocodificação no Nominatim evitando centróides de municípios; correção de coordenadas de quadras (Palmas - TO) no banco Supabase.
   - O APK v1.0 existente em produção NÃO quebra, pois o backend mantém retrocompatibilidade transparente e as novidades de frontend são entregues via OTA (`eas update`).
 
 ### FASE 5 — Segurança + Integração Meta Cloud API 🛡️

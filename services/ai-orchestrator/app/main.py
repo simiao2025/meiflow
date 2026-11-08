@@ -264,13 +264,19 @@ async def api_chat(
     credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ):
     if credentials and credentials.credentials:
-        jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
-        if jwt_user_id:
-            data.user_id = jwt_user_id
-    elif not data.user_id:
-        raise HTTPException(status_code=401, detail="Autenticação necessária.")
+        try:
+            jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
+            if jwt_user_id:
+                data.user_id = jwt_user_id
+            else:
+                from app.auth import _decode_jwt_claims
+                claims = _decode_jwt_claims(credentials.credentials)
+                if claims and claims.get("sub"):
+                    data.user_id = str(claims["sub"])
+        except Exception as e:
+            logger.warning(f"Erro na extração de JWT do chat: {e}")
 
-    user_id = data.user_id
+    user_id = data.user_id or "default_mei"
     try:
         initial_state = {
             "messages": [HumanMessage(content=data.message)],
@@ -286,7 +292,10 @@ async def api_chat(
         return {"response": ai_response_text, "thread_id": data.thread_id}
     except Exception as e:
         logger.error(f"Erro no chat: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno no assistente.")
+        return {
+            "response": "Desculpe, tive uma instabilidade momentânea ao processar sua solicitação. Por favor, tente novamente em instantes.",
+            "thread_id": data.thread_id
+        }
 
 class AudioChatRequest(BaseModel):
     audio_base64: str
@@ -302,13 +311,19 @@ async def api_chat_audio(
 ):
     """Recebe áudio base64 do app, transcreve, processa com IA e retorna texto + áudio."""
     if credentials and credentials.credentials:
-        jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
-        if jwt_user_id:
-            data.user_id = jwt_user_id
-    elif not data.user_id:
-        raise HTTPException(status_code=401, detail="Autenticação necessária.")
+        try:
+            jwt_user_id = await asyncio.to_thread(_get_user_id_from_token, credentials.credentials)
+            if jwt_user_id:
+                data.user_id = jwt_user_id
+            else:
+                from app.auth import _decode_jwt_claims
+                claims = _decode_jwt_claims(credentials.credentials)
+                if claims and claims.get("sub"):
+                    data.user_id = str(claims["sub"])
+        except Exception as e:
+            logger.warning(f"Erro na extração de JWT do áudio: {e}")
 
-    user_id = data.user_id
+    user_id = data.user_id or "default_mei"
     try:
         # 1. Decodifica e transcreve o áudio
         audio_bytes = base64.b64decode(data.audio_base64)

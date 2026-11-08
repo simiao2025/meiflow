@@ -50,11 +50,9 @@ export default function OpportunitiesScreen() {
                 size={16} 
                 color={activeCategory === cat.id ? '#FFF' : Colors.textSecondary} 
               />
-              {activeCategory === cat.id && (
-                <Text style={styles.categoryLabelActive}>
-                  {cat.label}
-                </Text>
-              )}
+              <Text style={activeCategory === cat.id ? styles.categoryLabelActive : styles.categoryLabelInactive}>
+                {cat.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -81,9 +79,9 @@ function CreditSection() {
   const filters = [
     { key: 'todos', label: 'Todos' },
     { key: 'giro', label: 'Capital de Giro' },
-    { key: 'cartao', label: 'Cartão' },
+    { key: 'cartao', label: 'Cartão PJ' },
     { key: 'antecipacao', label: 'Antecipação' },
-    { key: 'investimento', label: 'Investimento' },
+    { key: 'investimento', label: 'Microcrédito' },
   ];
 
   const loadData = useCallback(async (cat?: string) => {
@@ -314,9 +312,9 @@ function LegalSection() {
   const filters = [
     { key: 'todos', label: 'Todos' },
     { key: 'legislacao', label: '📜 Legislação' },
-    { key: 'imposto', label: '💰 Impostos' },
-    { key: 'beneficio', label: '🎁 Benefícios' },
-    { key: 'prazo', label: '⏰ Prazos' },
+    { key: 'imposto', label: '💰 Tributos & Dívidas' },
+    { key: 'prazo', label: '⏰ Prazos & DASN' },
+    { key: 'beneficio', label: '🎁 Benefícios & Linhas' },
   ];
 
   const loadData = useCallback(async (cat?: string) => {
@@ -420,18 +418,19 @@ const getStyles = (Colors: any) => StyleSheet.create({
     flexDirection: 'row', 
     backgroundColor: 'rgba(255,255,255,0.05)', 
     borderRadius: 24, 
-    padding: 6,
+    padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   categoryItem: { 
     flex: 1, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    paddingVertical: 12, 
-    borderRadius: 18, 
-    gap: 8,
+    paddingVertical: 10, 
+    paddingHorizontal: 8,
+    borderRadius: 20, 
+    gap: 6,
   },
   categoryItemActive: { 
     backgroundColor: Colors.primary,
@@ -441,13 +440,34 @@ const getStyles = (Colors: any) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  categoryLabelActive: { color: '#FFF', fontSize: 13, fontFamily: Typography.fonts.display },
+  categoryLabelActive: { color: '#FFF', fontSize: 13, fontFamily: Typography.fonts.bold },
+  categoryLabelInactive: { color: Colors.textSecondary, fontSize: 13, fontFamily: Typography.fonts.medium },
 
-  filterRow: { paddingLeft: 20, paddingVertical: 12, maxHeight: 60 },
-  chip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginRight: 10 },
-  chipActive: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: Colors.primary },
-  chipText: { color: Colors.textMuted, fontSize: 13, fontFamily: Typography.fonts.medium },
-  chipTextActive: { color: Colors.text },
+  filterRow: { paddingLeft: 20, paddingVertical: 8 },
+  chip: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 10, 
+    borderRadius: 16, 
+    backgroundColor: 'rgba(255,255,255,0.06)', 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.12)', 
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipActive: { 
+    backgroundColor: 'rgba(16, 185, 129, 0.2)', 
+    borderColor: Colors.primary,
+  },
+  chipText: { 
+    color: '#CBD5E1', 
+    fontSize: 13, 
+    fontFamily: Typography.fonts.medium,
+  },
+  chipTextActive: { 
+    color: '#FFFFFF',
+    fontFamily: Typography.fonts.bold,
+  },
 
   content: { padding: 20, paddingBottom: 120 },
 

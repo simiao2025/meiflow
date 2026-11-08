@@ -83,14 +83,25 @@ export function useAssistantChat(provider: string = 'openai') {
       });
       clearTimeout(timeoutId);
 
-      const data = await response.json();
+      const textData = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(textData);
+      } catch (_) {
+        throw new Error('O assistente está iniciando. Por favor, envie sua mensagem novamente em alguns segundos.');
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.detail || data?.message || `Instabilidade temporária (${response.status}). Tente novamente.`);
+      }
+
       const aiContent = data?.response || data?.message || 'Desculpe, não consegui processar sua solicitação.';
       const aiMsg = { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: aiContent };
       const updated = [...newMessages, aiMsg];
       setMessages(updated);
       saveChatHistory(updated);
     } catch (e: any) {
-      let errorMsg = '⚠️ Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
+      let errorMsg = e?.message || '⚠️ Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
       if (e?.name === 'AbortError' || e?.message?.includes('aborted')) {
         errorMsg = '⏳ O assistente está demorando mais que o esperado (servidor pode estar iniciando). Tente novamente em alguns segundos.';
       } else if (e?.message?.includes('Network request failed') || e?.message?.includes('fetch')) {
@@ -136,7 +147,13 @@ export function useAssistantChat(provider: string = 'openai') {
       });
       clearTimeout(timeoutId);
 
-      const data = await response.json();
+      const textData = await response.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(textData);
+      } catch (_) {
+        throw new Error('Servidor iniciando processamento de áudio. Tente novamente em instantes.');
+      }
       
       const userMsg = { id: tempId, role: 'user' as const, content: data.transcription || '🎤 Áudio' };
       const aiContent = data?.response || 'Desculpe, não consegui processar sua solicitação.';

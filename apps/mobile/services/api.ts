@@ -385,11 +385,17 @@ export const creditService = {
       if (data && data.length > 0) return data;
       throw new Error('No data');
     } catch (e) {
-      return [
-        { id: '1', title: 'Capital de Giro Rápido', bank_name: 'Banco do Brasil', match_score: 95, description: 'Crédito pré-aprovado baseado no seu faturamento.', rate: '1.99% a.m.', max_amount: 'R$ 15.000', url: 'https://bb.com.br' },
-        { id: '2', title: 'Cartão Empresarial', bank_name: 'Nubank', match_score: 88, description: 'Sem anuidade, com limite atrelado às suas vendas.', rate: '0% a.a.', max_amount: 'R$ 5.000', url: 'https://nubank.com.br' },
-        { id: '3', title: 'Antecipação de Recebíveis', bank_name: 'Mercado Pago', match_score: 92, description: 'Adiante os valores das suas vendas na maquininha.', rate: '1.49% a.m.', max_amount: 'R$ 8.000', url: 'https://mercadopago.com.br' },
+      const allFallback = [
+        { id: '1', title: 'PRONAMPE MEI Especial', bank_name: 'Caixa Econômica', match_score: 96, category: 'giro', description: 'Crédito com taxa reduzida e garantia do FGO para investimento e giro.', rate: '1.49% a.m.', max_amount: 'Até R$ 150.000', url: 'https://caixa.gov.br' },
+        { id: '2', title: 'Cartão BNDES MEI', bank_name: 'BNDES', match_score: 95, category: 'cartao', description: 'Crédito rotativo pré-aprovado para compra de máquinas e insumos.', rate: '1.20% a.m.', max_amount: 'Até R$ 250.000', url: 'https://bndes.gov.br' },
+        { id: '3', title: 'BB Giro Digital MEI', bank_name: 'Banco do Brasil', match_score: 93, category: 'giro', description: 'Capital de giro 100% digital com aprovação instantânea.', rate: '1.59% a.m.', max_amount: 'Até R$ 100.000', url: 'https://bb.com.br' },
+        { id: '4', title: 'Antecipação de Vendas', bank_name: 'Sicredi / Mercado Pago', match_score: 91, category: 'antecipacao', description: 'Receba na hora o valor das vendas parceladas na maquininha.', rate: '1.49% a.m.', max_amount: 'Conforme vendas', url: 'https://sicredi.com.br' },
+        { id: '5', title: 'CrediAmigo Microcrédito', bank_name: 'Banco do Nordeste', match_score: 90, category: 'investimento', description: 'Microcrédito produtivo orientado para crescimento do seu negócio.', rate: '1.05% a.m.', max_amount: 'Até R$ 21.000', url: 'https://bnb.gov.br' },
       ];
+      if (category && category !== 'todos') {
+        return allFallback.filter(item => item.category === category);
+      }
+      return allFallback;
     }
   }
 };
@@ -413,11 +419,16 @@ export const alertsService = {
       if (data && data.length > 0) return data;
       throw new Error('No data');
     } catch (e) {
-      return [
-        { id: '1', title: 'Novo Limite de Faturamento', summary: 'Projeto de lei propõe aumento do limite anual do MEI para R$ 130 mil a partir de 2026.', source: 'Câmara dos Deputados', published_at: new Date().toISOString(), impact: 'Alta', url: 'https://camara.leg.br' },
-        { id: '2', title: 'Prorrogação DASN', summary: 'A Receita Federal prorrogou o prazo para entrega da declaração anual do MEI.', source: 'Receita Federal', published_at: new Date().toISOString(), impact: 'Crítica', url: 'https://gov.br/receitafederal' },
-        { id: '3', title: 'Guia DAS de Maio', summary: 'Sua guia de arrecadação vence em 5 dias.', source: 'Simples Nacional', published_at: new Date().toISOString(), impact: 'Média', url: 'https://gov.br/receitafederal' },
+      const allAlertsFallback = [
+        { id: '1', title: 'Reforma Tributária: Manutenção do Regime MEI', summary: 'A regulamentação da Reforma Tributária assegura que o MEI continua sob o regime unificado do Simples Nacional, sem cumulatividade de IBS/CBS.', source: 'Ministério da Fazenda', published_at: new Date().toISOString(), impact: 'Alta', category: 'legislacao', url: 'https://www.gov.br/fazenda' },
+        { id: '2', title: 'Regularização de Dívidas Ativas na PGFN', summary: 'Edital da Procuradoria da Fazenda Nacional oferece até 50% de desconto sobre multas e juros para débitos inscritos em dívida ativa.', source: 'Receita Federal / PGFN', published_at: new Date().toISOString(), impact: 'Crítica', category: 'imposto', url: 'https://www.regularize.pgfn.gov.br' },
+        { id: '3', title: 'Fechamento de Faturamento 2026 e DASN', summary: 'Acompanhe o faturamento acumulado nos últimos meses para manter-se dentro do limite anual e agilizar a Declaração Anual.', source: 'Simples Nacional', published_at: new Date().toISOString(), impact: 'Alta', category: 'prazo', url: 'https://www.gov.br/receitafederal' },
+        { id: '4', title: 'Crédito Pronampe MEI Especial de Fim de Ano', summary: 'Linha especial para reforço de estoque e capital de giro com carência estendida para o período de maior movimentação.', source: 'BNDES / Caixa', published_at: new Date().toISOString(), impact: 'Média', category: 'beneficio', url: 'https://www.gov.br/empresas-e-negocios' },
       ];
+      if (category && category !== 'todos') {
+        return allAlertsFallback.filter(item => item.category === category);
+      }
+      return allAlertsFallback;
     }
   }
 };

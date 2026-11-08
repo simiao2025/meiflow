@@ -51,19 +51,36 @@ export default function MapScreen() {
   }, []);
 
   const openNavigationExternal = () => {
-    if (!targetCoords) return;
+    // Destino prioritário: se temos o endereço cadastrado, usamos o endereço textual
+    // Isso garante que Google Maps e Waze utilizem a base de dados oficial e naveguem com 100% de precisão até a porta do cliente.
+    const hasAddress = typeof clientAddress === 'string' && clientAddress.trim().length > 0;
+    const addressQuery = hasAddress ? encodeURIComponent(clientAddress as string) : '';
+    const latLng = targetCoords ? `${targetCoords.latitude},${targetCoords.longitude}` : '';
+    const destination = addressQuery || latLng;
 
-    const latLng = `${targetCoords.latitude},${targetCoords.longitude}`;
-    const label = encodeURIComponent((clientName as string) || 'Cliente');
+    if (!destination) {
+      Alert.alert('Atenção', 'Endereço ou coordenadas não disponíveis para navegação.');
+      return;
+    }
 
-    Alert.alert('Abrir com', 'Escolha um aplicativo de navegação', [
+    Alert.alert('Abrir Navegação', 'Escolha seu aplicativo de navegação:', [
       {
         text: 'Google Maps',
-        onPress: () => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latLng}`),
+        onPress: () => {
+          const url = addressQuery
+            ? `https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`
+            : `https://www.google.com/maps/dir/?api=1&destination=${latLng}`;
+          Linking.openURL(url);
+        },
       },
       {
         text: 'Waze',
-        onPress: () => Linking.openURL(`https://waze.com/ul?ll=${latLng}&navigate=yes`),
+        onPress: () => {
+          const url = addressQuery
+            ? `https://waze.com/ul?q=${addressQuery}&navigate=yes`
+            : `https://waze.com/ul?ll=${latLng}&navigate=yes`;
+          Linking.openURL(url);
+        },
       },
       {
         text: 'Cancelar',
@@ -75,16 +92,25 @@ export default function MapScreen() {
   const qLat = targetCoords?.latitude;
   const qLng = targetCoords?.longitude;
 
-  // Se não tem coordenadas do cliente, mostra mensagem informativa
+  // Se não tem coordenadas geocodificadas, permite navegar diretamente pelo endereço textual
   if (qLat == null || qLng == null) {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="location-outline" size={48} color={Colors.primary} />
-        <Text style={styles.errorText}>Coordenadas do cliente não disponíveis.</Text>
-        <Text style={[styles.errorText, { fontSize: 13, color: Colors.textSecondary, marginTop: 4 }]}>
-          O endereço ainda não foi geocodificado. Edite o cliente para atualizar a localização.
+        <Text style={styles.errorText}>Endereço do Cliente</Text>
+        <Text style={[styles.errorText, { fontSize: 14, color: Colors.text, marginTop: 8, paddingHorizontal: 24, textAlign: 'center' }]}>
+          {clientAddress || 'Endereço não informado'}
         </Text>
-        <TouchableOpacity style={[styles.backBtn, { marginTop: 24 }]} onPress={() => router.back()}>
+        {clientAddress ? (
+          <TouchableOpacity 
+            style={[styles.navigateBtn, { marginTop: 24, paddingHorizontal: 24, paddingVertical: 14, backgroundColor: Colors.primary }]} 
+            onPress={openNavigationExternal}
+          >
+            <Ionicons name="navigate" size={20} color="#000" style={{ marginRight: 8 }} />
+            <Text style={[styles.navigateText, { color: '#000' }]}>Navegar com Google Maps / Waze</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity style={[styles.backBtn, { marginTop: 20 }]} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>Voltar</Text>
         </TouchableOpacity>
       </View>

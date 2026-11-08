@@ -8,6 +8,24 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ## [Unreleased]
 
 ### Fixed
+- **Oportunidades (Crédito, Licitações e Radar MEI)**:
+  - Exibição de labels permanentes em todas as 3 abas principais (Crédito, Licitações, Radar MEI), acabando com abas inativas sem título.
+  - Correção do clipping vertical de subabas/chips de filtro (`maxHeight: 60`), garantindo contraste legível em tema escuro e evitando corte de texto no Android.
+  - Sincronização de ofertas de crédito reais via view `public.credit_offers` ligada a `financial.credit_offers` (BNDES, PRONAMPE Caixa, BB, BizCapital, Sicredi, BNB CrediAmigo, Santander e Nubank).
+  - Atualização dos alertas do Radar MEI na tabela `public.mei_alerts` com notícias vigentes de novembro de 2026/2027 (Reforma Tributária, Dívidas Ativas PGFN, Fechamento 2026, DTE e NFS-e).
+- **PDV Vendas (Serviços e Produtos)**:
+  - Removido bloqueio que ocultava serviços no caixa (`type == 'product'` e `stock_quantity > 0`). Agora permite realizar vendas de serviços cadastrados pelo MEI.
+  - Adicionado seletor de categorias no PDV: **"Todos"**, **"🛠️ Serviços"** e **"📦 Produtos"**.
+  - Validação de estoque inteligente: serviços não possuem trava de estoque físico, enquanto produtos continuam respeitando o saldo disponível.
+  - Integração de conclusão de venda com atalho direto para emissão de NFS-e quando a venda contém serviços.
+- **Assistente de IA**:
+  - `LLMFactory`: auto-fallback defensivo para OpenAI caso o usuário selecione modelos da Anthropic, Google ou Groq que não possuam chaves cadastradas no ambiente, eliminando respostas de erro 500.
+  - Endpoint `/api/v1/chat` blindado contra falhas de decodificação de JWT e com fallback de mensagem amigável em caso de instabilidade temporária.
+  - Mobile `useAssistantChat`: parsing seguro de respostas do servidor, tratando reinicialização de instâncias sem alarmar o usuário com falsos erros de rede.
+- **Localização / GPS & Navegação**:
+  - Em `map.tsx`, priorização do endereço textual formatado (`clientAddress`) para abertura de rotas no Google Maps e Waze, garantindo navegação com precisão oficial até a porta do cliente e evitando distorções de centróides.
+  - Em `useClients.ts`, validação de geocodificação no Nominatim/OSM para rejeitar centróides de municípios ou limites administrativos genéricos.
+  - Atualização e correção das coordenadas de clientes com endereços em quadras (Palmas - TO) no banco Supabase.
 - **Estabilização Evolution Go v3 (Conexão WhatsApp)**:
   - Inicialização garantida do socket via `POST /instance/connect` antes de chamar `POST /instance/pair`, eliminando o erro `500 websocket not connected`.
   - Injeção automática da URL do webhook (`https://meiflow-ai-orchestrator.onrender.com/webhook/whatsapp`) e eventos `MESSAGE` durante a conexão da instância.
