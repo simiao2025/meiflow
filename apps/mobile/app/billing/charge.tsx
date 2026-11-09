@@ -62,6 +62,7 @@ export default function ChargeScreen() {
       <ChargeResultScreen
         chargeResult={chargeResult}
         onReset={() => setChargeResult(null)}
+        doneLabel="Voltar para Ajustes"
       />
     );
   }

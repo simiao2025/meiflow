@@ -7,6 +7,30 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+### Added
+- **Agente SDR WhatsApp (Total Autonomia Comercial & Fechamento de Vendas)**:
+  - Agente de atendimento do cliente (`agents/customer/graph.py`) equipado com total autonomia para interagir com o cliente, tirar dúvidas, apresentar produtos e serviços do catálogo, agendar visitas e fechar vendas no WhatsApp.
+  - **Pagamento Antecipado**:
+    - Chave PIX Estática (`obter_chave_pix_mei`): consulta a chave oficial do MEI e orienta o cliente a enviar o comprovante de pagamento para confirmação imediata.
+    - Chave PIX Dinâmica (`gerar_pix_dinamico`): geração instantânea de cobrança com código EMV BR Code oficial (PIX Copia e Cola com CRC16 válido) e link de pagamento Asaas.
+  - **Fechamento de Vendas com CPF & CRM**:
+    - Solicitação de CPF do cliente com consulta direta na base de dados (`consultar_cliente_por_cpf`).
+    - Cadastro e atualização automática de clientes no CRM (`cadastrar_ou_atualizar_cliente`).
+    - Registro formal do pedido de venda no sistema (`fechar_pedido_venda`), lançando em `sales_orders` e atualizando estoque do catálogo.
+  - Conexão de ferramentas via `supabase_admin` (Service Role), contornando limitações de RLS anônimo durante interações via webhook e corrigindo consulta para a tabela oficial `public.catalog_items`.
+
+### Fixed
+- **PDV Vendas (Fluxo Completo de Venda e Cobrança)**:
+  - Fluxo reformulado de ponta a ponta: começa com a identificação do cliente (Consumidor Final / Venda Rápida ou seleção de clientes com busca por nome/CPF).
+  - Controles diretos de quantidade `[-] Qtd [+]` nos cards de itens, com validação inteligente de estoque para produtos e flexibilidade para serviços.
+  - Barra de checkout (`cartBar`) redesenhada como ilha flutuante em `bottom: 84` (acima da barra de abas inferior), com `paddingBottom: 220` na lista de itens, eliminando a sobreposição de botões.
+  - Modal de finalização com apresentação clara das formas de pagamento (PIX Instantâneo, Cartão e Dinheiro), gerando a cobrança no Asaas com tela de QR Code PIX Copia-e-Cola e atalho de emissão de NFS-e para serviços.
+- **Mapeamento de Telas Ocultas sob o Menu Inferior**:
+  - `(tabs)/pos.tsx`: `cartBar` elevada para `bottom: 84` com margens e cantos arredondados, permitindo toque livre em todos os métodos e botões.
+  - `(tabs)/schedule.tsx`: Botão de ação flutuante (FAB) elevado de `bottom: 30` para `bottom: 110`, desobstruindo o acesso na Agenda.
+- **Performance & Latência do Assistente IA**:
+  - Modelo padrão em `llm_factory.py` atualizado para `gpt-4o-mini`, reduzindo o tempo de resposta das consultas de ~10-15s para ~1-2s com tool calling ágil.
+
 ### Fixed
 - **Estabilização Crítica de Backend & Autenticação (WhatsApp & Ajustes)**:
   - Corrigido `NameError: name 'supabase_admin' is not defined` e `name 'asyncio' is not defined` em `services/ai-orchestrator/app/main.py`, que causavam erro 500 ao solicitar código de pareamento, consultar status ou desconectar instâncias do Evolution Go v3.

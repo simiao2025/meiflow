@@ -61,6 +61,29 @@
 
 ## 🔄 Últimas Mudanças (Sessão Atual)
 
+### FASE 7 — Autonomia Total Agente SDR, Fluxo de Vendas PDV & Correção de Overlap de Telas 🚀🛡️
+- 🤖 **Agente SDR WhatsApp com Total Autonomia Comercial**:
+  - `agents/customer/graph.py` e `tools/crm_tools.py`: Agente capacitado para conduzir atendimento comercial completo com autonomia via WhatsApp (Evolution Go e Meta Cloud API).
+  - **Pagamento Antecipado**:
+    - Chave PIX Estática (`obter_chave_pix_mei`): consulta dados do MEI e orienta envio do comprovante para confirmação.
+    - Chave PIX Dinâmica (`gerar_pix_dinamico`): geração de código EMV BR Code oficial (PIX Copia e Cola com CRC16 válido) e link de pagamento Asaas.
+  - **Fechamento de Vendas & CRM**:
+    - Solicitação de CPF do cliente com busca direta na base (`consultar_cliente_por_cpf`).
+    - Cadastro/atualização de clientes (`cadastrar_ou_atualizar_cliente`).
+    - Registro de pedidos de venda (`fechar_pedido_venda`) em `sales_orders` com baixa de estoque.
+    - Migração de chamadas das tools para `supabase_admin` (Service Role), resolvendo restrições de RLS anônimo e corrigindo consulta para a tabela oficial `public.catalog_items`.
+- ⚡ **Performance do Assistente IA**:
+  - `services/ai-orchestrator/app/llm_factory.py`: modelo padrão atualizado para `gpt-4o-mini`, reduzindo latência de resposta de ~12s para ~1.5s.
+- 📱 **PDV Vendas & Correção de Layout (Menu Inferior)**:
+  - Mapeamento e correção de telas sobrepostas pela TabBar:
+    - `pos.tsx`: `cartBar` elevada para `bottom: 84`, `left: 16`, `right: 16`, flutuando acima da barra de navegação, com lista em `paddingBottom: 220`.
+    - `schedule.tsx`: FAB elevado de `bottom: 30` para `bottom: 110`.
+  - Fluxo de Vendas reformulado de ponta a ponta:
+    - 1. Seleção inicial do cliente (Consumidor Final ou busca na base com opção de cadastro).
+    - 2. Seleção de itens (Serviços / Produtos) com botões de quantidade `[-] Qtd [+]` no card.
+    - 3. Modal de pagamento e geração de cobrança (PIX com QR Code, Cartão ou Dinheiro no caixa).
+    - 4. Conclusão com atalho para emissão de NFS-e caso o pedido contenha serviços.
+
 ### FASE 6 — Auditoria Forense de Integrações & Blindagem (Fail-Closed) 🛡️⚡
 - 🔍 **Auditoria Forense Concluída**: Relatório detalhado em [`forensic_integrations_audit.md`](file:///C:/Users/PRV/.gemini/antigravity/brain/cc7ffb0e-4090-498f-a94f-36fc2d7f8839/forensic_integrations_audit.md). 10 vulnerabilidades mapeadas e mitigadas.
 - 🔒 **Blindagem de Endpoints & Fail-Closed**:

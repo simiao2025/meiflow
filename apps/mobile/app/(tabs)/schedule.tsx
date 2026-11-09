@@ -182,7 +182,7 @@ const getStyles = (Colors: any) => StyleSheet.create({
   emptyText: { color: Colors.textMuted, fontSize: 14, fontFamily: Typography.fonts.medium, marginTop: 12 },
   fab: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 110,
     right: 24,
     width: 60,
     height: 60,
@@ -195,5 +195,6 @@ const getStyles = (Colors: any) => StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 8,
+    zIndex: 20,
   }
 });

@@ -29,9 +29,11 @@ interface ChargeResult {
 interface Props {
   chargeResult: ChargeResult;
   onReset: () => void;
+  doneLabel?: string;
+  onDone?: () => void;
 }
 
-export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
+export default function ChargeResultScreen({ chargeResult, onReset, doneLabel = 'Voltar', onDone }: Props) {
   const router = useRouter();
   const { user } = useAuthStore();
 
@@ -156,8 +158,8 @@ export default function ChargeResultScreen({ chargeResult, onReset }: Props) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.doneButton} onPress={() => router.back()}>
-          <Text style={styles.doneText}>Voltar para Ajustes</Text>
+        <TouchableOpacity style={styles.doneButton} onPress={onDone || (() => router.back())}>
+          <Text style={styles.doneText}>{doneLabel}</Text>
         </TouchableOpacity>
 
         {chargeResult.status !== 'paid' && __DEV__ && (

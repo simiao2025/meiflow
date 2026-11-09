@@ -21,7 +21,7 @@ class LLMFactory:
 
         if provider == "openai":
             return ChatOpenAI(
-                model=model_name or "gpt-4o",
+                model=model_name or "gpt-4o-mini",
                 temperature=temperature,
                 api_key=settings.OPENAI_API_KEY
             )
