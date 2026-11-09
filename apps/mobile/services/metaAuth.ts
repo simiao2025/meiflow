@@ -38,6 +38,7 @@ export async function startMetaOauth(userId: string): Promise<MetaOauthStartResp
     headers: {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
+      'X-User-Id': userId,
     },
     body: JSON.stringify({ user_id: userId }),
   });
@@ -76,7 +77,12 @@ export async function pollMetaStatus(
       try {
         const res = await fetch(
           `${API_BASE_URL}/api/v1/crm/meta/status/${userId}`,
-          { headers: { 'Authorization': token ? `Bearer ${token}` : '' } }
+          { 
+            headers: { 
+              'Authorization': token ? `Bearer ${token}` : '',
+              'X-User-Id': userId
+            } 
+          }
         );
         if (!res.ok) throw new Error('Falha ao consultar status Meta.');
         const data: MetaStatusResponse = await res.json();
@@ -115,7 +121,10 @@ export async function disconnectMeta(userId: string): Promise<void> {
   const token = await getFreshAuthToken();
   const res = await fetch(`${API_BASE_URL}/api/v1/crm/meta/disconnect/${userId}`, {
     method: 'DELETE',
-    headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+    headers: { 
+      'Authorization': token ? `Bearer ${token}` : '',
+      'X-User-Id': userId
+    },
   });
   if (!res.ok) {
     throw new Error('Falha ao desconectar Meta Cloud API.');

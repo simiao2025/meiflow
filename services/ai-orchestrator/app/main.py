@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import csv
 import io
@@ -25,6 +26,7 @@ from app.scheduler import start_scheduler
 from app.whatsapp_service import WhatsAppService
 from integrations.audio_service import AudioService
 from tools.crm_tools import _get_user_id_from_token, _supabase_get, _supabase_patch, _supabase_post
+from shared.database import supabase, supabase_admin
 
 logger = logging.getLogger(__name__)
 

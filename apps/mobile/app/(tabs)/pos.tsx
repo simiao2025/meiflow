@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, Animated, Alert
@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../services/supabase';
 import { Typography, Palette, useThemeColors } from '../../constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 export default function PosScreen() {
   const Colors = useThemeColors();
@@ -29,6 +29,12 @@ export default function PosScreen() {
     loadItems();
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadItems();
+    }, [user])
+  );
 
   const loadItems = async () => {
     if (!user) return;
@@ -124,6 +130,29 @@ export default function PosScreen() {
         throw itemsError;
       }
 
+      // 3. Registra a receita correspondente em transactions para alimentar o fluxo de caixa
+      try {
+        await supabase.from('transactions').insert({
+          user_id: user.id,
+          type: 'receita',
+          amount: totalAmount,
+          status: 'completed',
+          payment_method: paymentMethod,
+          description: `Venda Caixa/PDV (${cart.map(c => `${c.quantity}x ${c.item.name}`).join(', ')})`,
+          date: new Date().toISOString()
+        });
+      } catch (txErr) {
+        console.warn('Falha ao registrar transaction auxiliar de venda:', txErr);
+      }
+
+      // 4. Se houver produtos com controle de estoque, decrementa quantidade
+      for (const c of cart) {
+        if (c.item.type === 'product' && typeof c.item.stock_quantity === 'number') {
+          const newQty = Math.max(0, c.item.stock_quantity - c.quantity);
+          await supabase.from('catalog_items').update({ stock_quantity: newQty }).eq('id', c.item.id);
+        }
+      }
+
       const hasServices = cart.some(c => c.item.type === 'service');
 
       Alert.alert(
@@ -144,9 +173,9 @@ export default function PosScreen() {
           { text: 'Concluir', onPress: () => { setCart([]); loadItems(); } }
         ]
       );
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Erro', 'Ocorreu um erro ao finalizar a venda.');
+    } catch (e: any) {
+      console.error('Erro na venda:', e);
+      Alert.alert('Erro', e?.message || 'Ocorreu um erro ao finalizar a venda.');
     } finally {
       setIsCheckingOut(false);
     }

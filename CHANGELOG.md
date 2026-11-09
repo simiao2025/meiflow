@@ -8,6 +8,16 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ## [Unreleased]
 
 ### Fixed
+- **Estabilização Crítica de Backend & Autenticação (WhatsApp & Ajustes)**:
+  - Corrigido `NameError: name 'supabase_admin' is not defined` e `name 'asyncio' is not defined` em `services/ai-orchestrator/app/main.py`, que causavam erro 500 ao solicitar código de pareamento, consultar status ou desconectar instâncias do Evolution Go v3.
+  - Blindagem adicional em `services/ai-orchestrator/app/auth.py`: suporte completo a `X-User-Id` em headers, rotas e query params (`?user_id=...` e `?cnpj=...`), além de validação direta contra a tabela `profiles` do Supabase para requisições de usuários logados.
+  - No mobile (`settings.tsx` e `metaAuth.ts`), inclusão explícita do cabeçalho `X-User-Id` e recuperação defensiva direta de `profiles` no Supabase caso a instância não esteja em memória, eliminando a exibição do erro 401 (*"Autenticação necessária"*).
+- **PDV Vendas (Finalização Completa & Ciclo Financeiro)**:
+  - Adicionado recarregamento automático do catálogo via `useFocusEffect` em `pos.tsx`, garantindo que novos serviços cadastrados apareçam imediatamente.
+  - Ao finalizar a venda, registro adicional de receita na tabela `public.transactions` para alimentar o fluxo de caixa do MEI, além da atualização automática de estoque para produtos físicos.
+- **Oportunidades & Radar MEI**:
+  - Ajuste de altura e `flexGrow: 0` no `filterRow` de `opportunities.tsx`, evitando corte ou esmagamento dos chips de subabas no Android.
+  - Desativação no banco de dados de alertas com datas anteriores a outubro de 2026, mantendo apenas informações vigentes e atualizadas no Radar MEI.
 - **Autenticação JWT Resiliente e Conexão WhatsApp / Meta Cloud**:
   - Implementação da função `getFreshAuthToken()` em `apps/mobile/services/supabase.ts`, realizando verificação pró-ativa de validade (buffer de 60s) e auto-refresh via `supabase.auth.refreshSession()` antes de cada requisição autenticada, eliminando tokens expirados no armazenamento local.
   - Atualização automática de perfil no mobile via `useFocusEffect` em `SettingsScreen`, assegurando que `evolution_instance` e status de conexão estejam sempre em sincronia com o banco ao abrir ou retornar aos Ajustes.
@@ -108,6 +118,16 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Arquivos sem referência (fallow): `components/ExternalLink.tsx`, `components/dashboard/QuickActions.tsx`, `components/useColorScheme.web.ts`, `scratch/test_supabase.ts`
 
 ### Fixed
+- **Estabilização Crítica de Backend & Autenticação (WhatsApp & Ajustes)**:
+  - Corrigido `NameError: name 'supabase_admin' is not defined` e `name 'asyncio' is not defined` em `services/ai-orchestrator/app/main.py`, que causavam erro 500 ao solicitar código de pareamento, consultar status ou desconectar instâncias do Evolution Go v3.
+  - Blindagem adicional em `services/ai-orchestrator/app/auth.py`: suporte completo a `X-User-Id` em headers, rotas e query params (`?user_id=...` e `?cnpj=...`), além de validação direta contra a tabela `profiles` do Supabase para requisições de usuários logados.
+  - No mobile (`settings.tsx` e `metaAuth.ts`), inclusão explícita do cabeçalho `X-User-Id` e recuperação defensiva direta de `profiles` no Supabase caso a instância não esteja em memória, eliminando a exibição do erro 401 (*"Autenticação necessária"*).
+- **PDV Vendas (Finalização Completa & Ciclo Financeiro)**:
+  - Adicionado recarregamento automático do catálogo via `useFocusEffect` em `pos.tsx`, garantindo que novos serviços cadastrados apareçam imediatamente.
+  - Ao finalizar a venda, registro adicional de receita na tabela `public.transactions` para alimentar o fluxo de caixa do MEI, além da atualização automática de estoque para produtos físicos.
+- **Oportunidades & Radar MEI**:
+  - Ajuste de altura e `flexGrow: 0` no `filterRow` de `opportunities.tsx`, evitando corte ou esmagamento dos chips de subabas no Android.
+  - Desativação no banco de dados de alertas com datas anteriores a outubro de 2026, mantendo apenas informações vigentes e atualizadas no Radar MEI.
 - **Autenticação JWT no Backend (Integrações Evolution Go e Meta Cloud)**: Corrigida execução da função síncrona `_get_user_id_from_token` em `services/ai-orchestrator/app/auth.py` e `main.py` via `asyncio.to_thread` e decodificação resiliente de claims. O uso anterior de `await` em função síncrona causava `TypeError` interno no Python, descartando o token válido enviado pelo mobile e gerando erro 401 (*"Autenticação necessária. Envie o token JWT no cabeçalho Authorization: Bearer <token>"*) ao tocar em Conexão WhatsApp ou Meta Cloud API.
 - **Resiliência OAuth Meta**: Adicionado fallback em memória para retenção de `state` e PKCE verifier caso Redis esteja inacessível; resposta 503 com orientação explícita caso `META_APP_ID` ou `META_OAUTH_REDIRECT_URI` ainda não estejam preenchidos no servidor.
 - **Timeouts de Proxy CRM**: Aumentado timeout de comunicação com microsserviço CRM de 20s para 45s para mitigar latência de cold-start no Render.

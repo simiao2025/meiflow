@@ -74,6 +74,7 @@ export function useAssistantChat(provider: string = 'openai') {
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
+          'X-User-Id': user?.id || '',
           'bypass-tunnel-reminder': 'true',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -137,6 +138,7 @@ export function useAssistantChat(provider: string = 'openai') {
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
+          'X-User-Id': user?.id || '',
           'bypass-tunnel-reminder': 'true',
           'ngrok-skip-browser-warning': 'true'
         },

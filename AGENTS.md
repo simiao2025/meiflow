@@ -76,6 +76,9 @@
   - Webhook WhatsApp resiliente: tratamento de payloads flexíveis de Evolution Go v3 (`message`, `messages.upsert`), extração unificada de campos e proteção fail-closed tolerante a instâncias registradas no banco.
   - Resiliência contra cold-start do microserviço CRM: fallbacks diretos implementados no `ai-orchestrator` para gerenciar instâncias, pairing code e status diretamente na Evolution Go v3 e no Supabase.
   - Auto-cura de variáveis no Render: `get_evolution_credentials()` migra em tempo de execução domínios expirados (`.shop`) para `https://evolution-go.brasilonthebox.com` com a chave mestre `abcslirm2026`.
+  - `services/ai-orchestrator/app/main.py`: correção de import ausente de `supabase_admin` e `asyncio`, eliminando crashes 500 no fallback de pairing code e status.
+  - Vendas PDV: ciclo financeiro integrado registrando receita em `public.transactions`, recarregamento via `useFocusEffect` e atualização de estoque.
+  - Oportunidades: subabas sem esmagamento (`filterRow` com altura fixa e `flexGrow: 0`) e alertas antigos desativados no banco de dados.
   - Áudio: uso de `tempfile.NamedTemporaryFile` para evitar colisões e path traversal.
   - `shared/security.py`: mitigação de timing attacks em checagens de `INTERNAL_API_KEY`.
 - 🌐 **Infraestrutura Evolution Go v3**:

@@ -100,7 +100,8 @@ export default function SettingsScreen() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': token ? `Bearer ${token}` : '',
+          'X-User-Id': user?.id || ''
         },
         body: JSON.stringify({ phone_number: whatsappNumber, user_id: user?.id })
       });
@@ -137,7 +138,10 @@ export default function SettingsScreen() {
       try {
         const token = await getFreshAuthToken();
         const res = await fetch(`${apiUrl}/api/v1/crm/evolution/instance/status/${user?.id}`, {
-          headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+          headers: { 
+            'Authorization': token ? `Bearer ${token}` : '',
+            'X-User-Id': user?.id || ''
+          }
         });
         const data = await res.json();
         
@@ -269,7 +273,20 @@ export default function SettingsScreen() {
             onPress={async () => {
               // Garante que o perfil mais recente seja carregado
               await refreshProfile();
-              const curProfile = useAuthStore.getState().profile || profile;
+              let curProfile = useAuthStore.getState().profile || profile;
+
+              // Fallback defensivo direto do banco se o estado local estiver desatualizado
+              if (!curProfile?.evolution_instance && user?.id) {
+                try {
+                  const { data: directProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                  if (directProfile) {
+                    curProfile = directProfile;
+                    useAuthStore.getState().setProfile(directProfile);
+                  }
+                } catch (e) {
+                  // Prossegue com curProfile atual
+                }
+              }
 
               if (curProfile?.evolution_status === 'connected') {
                 Alert.alert('WhatsApp', 'Seu robô está online e operando.');
@@ -283,7 +300,8 @@ export default function SettingsScreen() {
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json',
-                      'Authorization': token ? `Bearer ${token}` : ''
+                      'Authorization': token ? `Bearer ${token}` : '',
+                      'X-User-Id': user?.id || ''
                     },
                     body: JSON.stringify({ cnpj: curProfile.cnpj, user_id: user?.id })
                   });
